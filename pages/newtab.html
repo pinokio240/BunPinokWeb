@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New Tab</title>
+<style>
+:root { --bg: #1a1a2e; --card: #16213e; --accent: #0f3460; --text: #e0e0e0; --highlight: #e94560; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
+body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.container { text-align: center; }
+.logo { font-size: 64px; margin-bottom: 16px; }
+.title { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+.subtitle { font-size: 14px; color: #a0a0b0; margin-bottom: 40px; }
+.search-box {
+  width: 540px; max-width: 90vw; height: 48px;
+  padding: 0 24px; border-radius: 24px;
+  border: 2px solid var(--accent); background: var(--card);
+  color: #fff; font-size: 16px; outline: none;
+}
+.search-box:focus { border-color: var(--highlight); }
+.quick-links { display: flex; gap: 16px; margin-top: 32px; flex-wrap: wrap; justify-content: center; }
+.quick-link {
+  width: 100px; height: 100px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; border-radius: 12px;
+  background: var(--card); cursor: pointer; transition: background 0.2s;
+  color: var(--text); text-decoration: none;
+}
+.quick-link:hover { background: var(--accent); }
+.quick-link .icon { font-size: 32px; margin-bottom: 8px; }
+.quick-link .label { font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">🌐</div>
+  <div class="title">BunPinokWeb</div>
+  <div class="subtitle">Fast. Private. Built on Electron + Bun.</div>
+  <input type="text" class="search-box" id="searchBox" placeholder="Search Google or type a URL" spellcheck="false" autocomplete="off">
+  <div class="quick-links">
+    <div class="quick-link" data-url="https://vk.com">
+      <span class="icon">💬</span>
+      <span class="label">VK</span>
+    </div>
+    <div class="quick-link" data-url="https://youtube.com">
+      <span class="icon">▶️</span>
+      <span class="label">YouTube</span>
+    </div>
+    <div class="quick-link" data-url="https://github.com">
+      <span class="icon">📦</span>
+      <span class="label">GitHub</span>
+    </div>
+    <div class="quick-link" data-url="https://translate.google.com">
+      <span class="icon">🔤</span>
+      <span class="label">Translate</span>
+    </div>
+    <div class="quick-link" data-url="browser://settings">
+      <span class="icon">⚙️</span>
+      <span class="label">Settings</span>
+    </div>
+    <div class="quick-link" data-url="browser://extensions">
+      <span class="icon">🧩</span>
+      <span class="label">Extensions</span>
+    </div>
+  </div>
+</div>
+<script>
+const searchBox = document.getElementById('searchBox');
+searchBox.addEventListener('keydown', async (e) => {
+  if (e.key === 'Enter') {
+    const input = e.target.value.trim();
+    if (!input) return;
+    const url = await window.browserAPI.omnibox.parse(input);
+    await window.browserAPI.tabs.navigate(await getActiveTabId(), url);
+  }
+});
+document.querySelectorAll('.quick-link').forEach(link => {
+  link.addEventListener('click', async () => {
+    const url = link.dataset.url;
+    await window.browserAPI.tabs.navigate(await getActiveTabId(), url);
+  });
+});
+async function getActiveTabId() {
+  const active = await window.browserAPI.tabs.getActive();
+  return active?.id;
+}
+searchBox.focus();
+</script>
+</body>
+</html>

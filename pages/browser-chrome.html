@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BunPinokWeb</title>
+<style>
+:root {
+  --chrome-bg: #dee1e6;
+  --chrome-tab-bg: #f0f1f2;
+  --chrome-tab-active: #ffffff;
+  --chrome-tab-hover: #e8eaed;
+  --chrome-tab-text: #5f6368;
+  --chrome-tab-active-text: #202124;
+  --chrome-toolbar: #ffffff;
+  --chrome-omnibox: #e8eaed;
+  --chrome-omnibox-focus: #ffffff;
+  --chrome-border: #dadce0;
+  --chrome-control-hover: #e8eaed;
+  --chrome-close-hover: #d93025;
+  --chrome-control-close: #fff;
+  --chrome-separator: #babcbe;
+  --win-control-hover: #e6e6e6;
+  --win-close-hover: #e81123;
+  --chrome-newtab-bg: #1a1a2e;
+  --chrome-extensions-bg: #ffffff;
+  --chrome-settings-bg: #f1f3f4;
+  --btn-primary: #1a73e8;
+  --btn-primary-hover: #1765cc;
+  --btn-danger: #d93025;
+  --btn-danger-hover: #c5221f;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100vh; overflow: hidden;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px; color: var(--chrome-tab-active-text);
+  background: var(--chrome-bg);
+  user-select: none;
+}
+#titlebar {
+  position: fixed; top: 0; left: 0; right: 0; height: 32px;
+  display: flex; align-items: center; background: var(--chrome-bg);
+  -webkit-app-region: drag; z-index: 100;
+}
+#titlebar-tabs {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  -webkit-app-region: no-drag;
+  overflow: hidden;
+}
+#tab-strip {
+  display: flex; align-items: stretch; height: 100%;
+  flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden;
+}
+#tab-strip::-webkit-scrollbar { height: 0; }
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  height: 100%; min-width: 40px; max-width: 240px;
+  padding: 0 12px 0 16px;
+  background: var(--chrome-tab-bg);
+  border-right: 1px solid var(--chrome-border);
+  cursor: pointer; flex-shrink: 1;
+  position: relative;
+  font-size: 12px; color: var(--chrome-tab-text);
+  white-space: nowrap; overflow: hidden;
+}
+.tab.active {
+  background: var(--chrome-tab-active);
+  color: var(--chrome-tab-active-text);
+}
+.tab:hover:not(.active) { background: var(--chrome-tab-hover); }
+.tab .tab-icon { width: 16px; height: 16px; flex-shrink: 0; }
+.tab .tab-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab .tab-close {
+  width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; flex-shrink: 0; font-size: 10px; line-height: 1;
+  opacity: 0; transition: opacity 0.15s;
+}
+.tab:hover .tab-close, .tab.active .tab-close { opacity: 1; }
+.tab .tab-close:hover { background: var(--chrome-close-hover); color: var(--chrome-control-close); }
+#new-tab-btn {
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent; cursor: pointer; border-radius: 50%;
+  color: var(--chrome-tab-text); font-size: 18px; flex-shrink: 0;
+  margin: 0 2px; -webkit-app-region: no-drag;
+}
+#new-tab-btn:hover { background: var(--chrome-control-hover); }
+#window-controls {
+  display: flex; align-items: center; height: 100%;
+  -webkit-app-region: no-drag;
+}
+.win-btn {
+  width: 46px; height: 100%; border: none; background: transparent;
+  cursor: pointer; color: var(--chrome-tab-text); font-size: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.win-btn:hover { background: var(--win-control-hover); }
+.win-btn.close:hover { background: var(--win-close-hover); color: white; }
+
+#toolbar {
+  position: fixed; top: 32px; left: 0; right: 0; height: 50px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px; background: var(--chrome-toolbar);
+  border-bottom: 1px solid var(--chrome-border);
+  z-index: 99;
+}
+.nav-btn {
+  width: 32px; height: 32px; border: none; background: transparent;
+  border-radius: 50%; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; color: #5f6368;
+  font-size: 16px; flex-shrink: 0;
+}
+.nav-btn:hover { background: var(--chrome-control-hover); }
+.nav-btn:disabled { opacity: 0.4; pointer-events: none; }
+#omnibox {
+  flex: 1; height: 36px; padding: 0 16px;
+  background: var(--chrome-omnibox); border: none;
+  border-radius: 22px; outline: none;
+  font-size: 14px; color: var(--chrome-tab-active-text);
+  min-width: 200px;
+}
+#omnibox:focus { background: var(--chrome-omnibox-focus); box-shadow: 0 1px 6px rgba(0,0,0,0.15); }
+#omnibox::placeholder { color: #9aa0a6; }
+
+#extensions-bar {
+  display: flex; align-items: center; gap: 2px; flex-shrink: 0;
+}
+.ext-icon {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+}
+.ext-icon:hover { background: var(--chrome-control-hover); }
+.ext-icon img { width: 16px; height: 16px; }
+
+#menu-btn {
+  width: 32px; height: 32px; border: none; background: transparent;
+  border-radius: 50%; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; color: #5f6368;
+  font-size: 18px; flex-shrink: 0;
+}
+#menu-btn:hover { background: var(--chrome-control-hover); }
+
+#content-area {
+  position: fixed; top: 82px; left: 0; right: 0; bottom: 0;
+  background: #fff; z-index: 1;
+}
+
+#status-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 22px;
+  background: #f2f2f2; border-top: 1px solid var(--chrome-border);
+  display: flex; align-items: center; padding: 0 8px; z-index: 100;
+  font-size: 11px; color: #707070; gap: 8px;
+}
+
+.loading-spinner {
+  width: 14px; height: 14px; border: 2px solid var(--chrome-border);
+  border-top-color: var(--btn-primary); border-radius: 50%;
+  animation: spin 0.6s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="titlebar">
+  <div id="titlebar-tabs">
+    <div id="tab-strip"></div>
+    <button id="new-tab-btn" title="New Tab">+</button>
+  </div>
+  <div id="window-controls">
+    <button class="win-btn" id="min-btn" title="Minimize">─</button>
+    <button class="win-btn" id="max-btn" title="Maximize">☐</button>
+    <button class="win-btn close" id="close-btn" title="Close">✕</button>
+  </div>
+</div>
+
+<div id="toolbar">
+  <button class="nav-btn" id="back-btn" title="Back">←</button>
+  <button class="nav-btn" id="forward-btn" title="Forward">→</button>
+  <button class="nav-btn" id="reload-btn" title="Reload">↻</button>
+  <input type="text" id="omnibox" placeholder="Search Google or type a URL" spellcheck="false" autocomplete="off">
+  <div id="extensions-bar"></div>
+  <button id="menu-btn" title="Menu">⋮</button>
+</div>
+
+<div id="content-area"></div>
+
+<div id="status-bar">
+  <span id="status-loading" style="display:none;"><span class="loading-spinner"></span></span>
+  <span id="status-url"></span>
+</div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+let tabs = [];
+let activeTabId = null;
+
+async function init() {
+  await refreshTabs();
+  setupEventListeners();
+  browserAPI.tabs.onUpdated(() => refreshTabs());
+  setInterval(refreshTabs, 3000);
+}
+
+async function refreshTabs() {
+  tabs = await browserAPI.tabs.getAll();
+  const active = await browserAPI.tabs.getActive();
+  activeTabId = active?.id;
+  renderTabs();
+  if (active) updateOmnibox(active.url);
+  updateNavButtons();
+  updateStatusBar();
+}
+
+function renderTabs() {
+  const strip = $('#tab-strip');
+  strip.innerHTML = '';
+  for (const tab of tabs) {
+    const el = document.createElement('div');
+    el.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
+    el.title = tab.title || tab.url || 'New Tab';
+    el.innerHTML = `
+      ${tab.isLoading ? '<span class="loading-spinner tab-icon"></span>' : ''}
+      <span class="tab-title">${escapeHtml(tab.title || tab.url || 'New Tab')}</span>
+      <span class="tab-close" data-close="${tab.id}">✕</span>
+    `;
+    el.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('tab-close')) {
+        browserAPI.tabs.select(tab.id);
+      }
+    });
+    strip.appendChild(el);
+  }
+}
+
+async function updateOmnibox(url) {
+  if (url && !url.startsWith('browser://')) {
+    $('#omnibox').value = url;
+  } else if (url === 'browser://newtab') {
+    $('#omnibox').value = '';
+  }
+}
+
+function updateNavButtons() {
+  const active = tabs.find(t => t.id === activeTabId);
+  if (active) {
+    $('#back-btn').disabled = false;
+    $('#forward-btn').disabled = false;
+    $('#reload-btn').disabled = false;
+  }
+}
+
+function updateStatusBar() {
+  const active = tabs.find(t => t.id === activeTabId);
+  if (!active) return;
+  $('#status-url').textContent = active.url || '';
+  $('#status-loading').style.display = active.isLoading ? 'inline-block' : 'none';
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function setupEventListeners() {
+  $('#new-tab-btn').addEventListener('click', () => browserAPI.tabs.create('browser://newtab'));
+  $('#back-btn').addEventListener('click', () => activeTabId && browserAPI.tabs.goBack(activeTabId));
+  $('#forward-btn').addEventListener('click', () => activeTabId && browserAPI.tabs.goForward(activeTabId));
+  $('#reload-btn').addEventListener('click', () => activeTabId && browserAPI.tabs.reload(activeTabId));
+
+  $('#tab-strip').addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('[data-close]');
+    if (closeBtn) {
+      e.stopPropagation();
+      const tabId = parseInt(closeBtn.dataset.close);
+      browserAPI.tabs.close(tabId);
+    }
+  });
+
+  $('#omnibox').addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      const input = e.target.value.trim();
+      if (!input) return;
+      const url = await browserAPI.omnibox.parse(input);
+      if (activeTabId) {
+        await browserAPI.tabs.navigate(activeTabId, url);
+      }
+      e.target.blur();
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 't') {
+      e.preventDefault();
+      browserAPI.tabs.create('browser://newtab');
+    }
+    if (e.ctrlKey && e.key === 'w') {
+      e.preventDefault();
+      activeTabId && browserAPI.tabs.close(activeTabId);
+    }
+    if (e.ctrlKey && e.key === 'l') {
+      e.preventDefault();
+      $('#omnibox').focus();
+      $('#omnibox').select();
+    }
+  });
+
+  $('#min-btn').addEventListener('click', () => browserAPI.window.minimize());
+  $('#max-btn').addEventListener('click', async () => {
+    const isMax = await browserAPI.window.maximize();
+    $('#max-btn').textContent = isMax ? '❐' : '☐';
+  });
+  $('#close-btn').addEventListener('click', () => browserAPI.window.close());
+
+  $('#menu-btn').addEventListener('click', () => {
+    browserAPI.tabs.create('browser://settings');
+  });
+}
+
+init();
+</script>
+</body>
+</html>

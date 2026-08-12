@@ -1,0 +1,21 @@
+{
+  "name": "bunpinokweb",
+  "version": "0.1.0",
+  "description": "Chrome-like desktop browser built on Electron + Bun",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder"
+  },
+  "author": "pinokio240",
+  "license": "MIT",
+  "dependencies": {
+    "electron-store": "^10.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}

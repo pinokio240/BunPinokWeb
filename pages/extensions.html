@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Extensions - BunPinokWeb</title>
+<style>
+:root {
+  --bg: #f1f3f4; --card: #ffffff; --text: #202124; --subtext: #5f6368;
+  --border: #dadce0; --accent: #1a73e8; --accent-hover: #1765cc;
+  --danger: #d93025; --toggle-on: #1a73e8; --toggle-off: #dadce0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; overflow-y: auto; }
+.container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
+.subtitle { color: var(--subtext); margin-bottom: 24px; }
+.back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; cursor: pointer; }
+.back-link:hover { text-decoration: underline; }
+.ext-card { background: var(--card); border-radius: 8px; padding: 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.ext-icon { width: 48px; height: 48px; border-radius: 8px; background: #e8eaed; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+.ext-info { flex: 1; }
+.ext-name { font-weight: 600; font-size: 15px; }
+.ext-desc { font-size: 12px; color: var(--subtext); margin-top: 2px; }
+.ext-version { font-size: 11px; color: var(--subtext); }
+.toggle {
+  width: 36px; height: 20px; border-radius: 10px; border: none;
+  cursor: pointer; position: relative; transition: background 0.2s;
+}
+.toggle.on { background: var(--toggle-on); }
+.toggle.off { background: var(--toggle-off); }
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: white; transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(16px); }
+.btn { padding: 8px 16px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; background: var(--card); color: var(--accent); }
+.btn:hover { background: #e8f0fe; }
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.danger:hover { background: #fce8e6; }
+.load-section { background: var(--card); border-radius: 8px; padding: 24px; margin-top: 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.load-section p { color: var(--subtext); margin-bottom: 16px; }
+.empty-state { text-align: center; padding: 40px; color: var(--subtext); }
+.empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back-link" onclick="history.back()">← Back</a>
+  <h1>Extensions</h1>
+  <p class="subtitle">Manage your browser extensions</p>
+
+  <div id="extensions-list"></div>
+
+  <div class="load-section">
+    <p>Load an unpacked extension to get started</p>
+    <button class="btn primary" id="load-ext-btn">Load unpacked extension</button>
+  </div>
+</div>
+
+<script>
+async function loadExtensions() {
+  const list = document.getElementById('extensions-list');
+  const all = await window.browserAPI.settings.getAll();
+  const extensions = all.extensions || [];
+
+  if (extensions.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🧩</div>
+        <p>No extensions installed</p>
+        <p style="font-size:12px">Load an unpacked extension to add it to the browser</p>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = extensions.map(ext => `
+    <div class="ext-card" data-id="${ext.id}">
+      <div class="ext-icon">🧩</div>
+      <div class="ext-info">
+        <div class="ext-name">${escapeHtml(ext.name)}</div>
+        <div class="ext-desc">${escapeHtml(ext.description || '')}</div>
+        <div class="ext-version">v${escapeHtml(ext.version)}</div>
+      </div>
+      <button class="toggle ${ext.enabled ? 'on' : 'off'}" data-id="${ext.id}" data-enabled="${ext.enabled}"></button>
+      <button class="btn danger" data-remove="${ext.id}">Remove</button>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.toggle').forEach(toggle => {
+    toggle.addEventListener('click', async () => {
+      const extId = toggle.dataset.id;
+      const enabled = toggle.dataset.enabled === 'true';
+      await window.browserAPI.settings.set(`extension.${extId}.enabled`, !enabled);
+      loadExtensions();
+    });
+  });
+
+  document.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const extId = btn.dataset.remove;
+      await window.browserAPI.settings.set(`extension.${extId}.removed`, true);
+      loadExtensions();
+    });
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+document.getElementById('load-ext-btn').addEventListener('click', async () => {
+  if (window.browserAPI.showOpenDialog) {
+    await window.browserAPI.showOpenDialog('directory');
+  }
+  const active = await window.browserAPI.tabs.getActive();
+  if (active) {
+    await window.browserAPI.tabs.navigate(active.id, 'browser://extensions');
+  }
+});
+
+loadExtensions();
+</script>
+</body>
+</html>

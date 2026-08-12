@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings - BunPinokWeb</title>
+<style>
+:root {
+  --bg: #f1f3f4; --card: #ffffff; --text: #202124; --subtext: #5f6368;
+  --border: #dadce0; --accent: #1a73e8; --accent-hover: #1765cc;
+  --danger: #d93025; --danger-hover: #c5221f;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; overflow-y: auto; }
+.container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+h1 { font-size: 28px; font-weight: 400; margin-bottom: 32px; color: var(--text); }
+.section { background: var(--card); border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+.row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.row:last-child { border-bottom: none; }
+.row-label { flex: 1; }
+.row-label .title { font-weight: 500; }
+.row-label .desc { font-size: 12px; color: var(--subtext); margin-top: 2px; }
+.btn { padding: 8px 16px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; background: var(--card); color: var(--accent); }
+.btn:hover { background: #e8f0fe; }
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.danger:hover { background: #fce8e6; }
+select, input[type="text"] { padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; outline: none; }
+select:focus, input[type="text"]:focus { border-color: var(--accent); }
+.back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; cursor: pointer; }
+.back-link:hover { text-decoration: underline; }
+.success-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #202124; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.success-toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back-link" onclick="history.back()">← Back</a>
+  <h1>Settings</h1>
+
+  <div class="section">
+    <div class="section-title">On Startup</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Open the New Tab page</div>
+      </div>
+      <select id="setting-onStartup">
+        <option value="newtab">New Tab page</option>
+        <option value="vk">VK</option>
+        <option value="continue">Continue where you left off</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Appearance</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Theme</div>
+        <div class="desc">Choose your browser theme</div>
+      </div>
+      <select id="setting-theme">
+        <option value="system">System default</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Show bookmarks bar</div>
+      </div>
+      <select id="setting-bookmarks">
+        <option value="false">Off</option>
+        <option value="true">On</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Downloads</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Location</div>
+        <div class="desc" id="download-path-label">Default</div>
+      </div>
+      <button class="btn" id="download-path-btn">Change</button>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Ask where to save each file before downloading</div>
+      </div>
+      <select id="setting-ask-download">
+        <option value="true">On</option>
+        <option value="false">Off</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Notifications</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Enable notifications</div>
+      </div>
+      <select id="setting-notifications">
+        <option value="true">On</option>
+        <option value="false">Off</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Sound notifications</div>
+      </div>
+      <select id="setting-sound">
+        <option value="true">On</option>
+        <option value="false">Off</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Privacy and Security</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Clear browsing data</div>
+        <div class="desc">Clear history, cookies, cache, and more</div>
+      </div>
+      <button class="btn danger" id="clear-cache-btn">Clear cache</button>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Clear cookies and site data</div>
+      </div>
+      <button class="btn danger" id="clear-cookies-btn">Clear data</button>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Clear everything</div>
+      </div>
+      <button class="btn danger" id="clear-all-btn">Clear all</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Extensions</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Manage extensions</div>
+      </div>
+      <button class="btn" id="extensions-link">Open extensions page</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="success-toast"></div>
+
+<script>
+async function loadSettings() {
+  const all = await window.browserAPI.settings.getAll();
+  setSelect('setting-onStartup', all['onStartup.page'] || 'newtab');
+  setSelect('setting-theme', all['appearance.theme'] || 'system');
+  setSelect('setting-bookmarks', String(all['appearance.showBookmarksBar'] || false));
+  setSelect('setting-ask-download', String(all['downloads.askBeforeSave'] !== false));
+  setSelect('setting-notifications', String(all['notifications.enabled'] !== false));
+  setSelect('setting-sound', String(all['notifications.soundEnabled'] !== false));
+
+  const dlPath = all['downloads.path'] || 'Default';
+  document.getElementById('download-path-label').textContent = dlPath;
+}
+
+function setSelect(id, value) {
+  const el = document.getElementById(id);
+  if (el) {
+    for (const opt of el.options) {
+      if (opt.value === value) { opt.selected = true; break; }
+    }
+  }
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+document.getElementById('setting-onStartup').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('onStartup.page', e.target.value);
+  showToast('Saved');
+});
+
+document.getElementById('setting-theme').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('appearance.theme', e.target.value);
+  showToast('Saved');
+});
+
+document.getElementById('setting-bookmarks').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('appearance.showBookmarksBar', e.target.value === 'true');
+  showToast('Saved');
+});
+
+document.getElementById('setting-ask-download').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('downloads.askBeforeSave', e.target.value === 'true');
+  showToast('Saved');
+});
+
+document.getElementById('setting-notifications').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('notifications.enabled', e.target.value === 'true');
+  showToast('Saved');
+});
+
+document.getElementById('setting-sound').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('notifications.soundEnabled', e.target.value === 'true');
+  showToast('Saved');
+});
+
+document.getElementById('download-path-btn').addEventListener('click', async () => {
+  const result = await window.browserAPI.downloads.setPath();
+  if (result.success) {
+    document.getElementById('download-path-label').textContent = result.path;
+    showToast('Download location saved');
+  }
+});
+
+document.getElementById('clear-cache-btn').addEventListener('click', async () => {
+  const result = await window.browserAPI.settings.clearBrowsingData({ cache: true });
+  showToast(result.success ? 'Cache cleared' : 'Failed to clear cache');
+});
+
+document.getElementById('clear-cookies-btn').addEventListener('click', async () => {
+  const result = await window.browserAPI.settings.clearBrowsingData({ cookies: true, localStorage: true });
+  showToast(result.success ? 'Data cleared' : 'Failed to clear data');
+});
+
+document.getElementById('clear-all-btn').addEventListener('click', async () => {
+  const result = await window.browserAPI.settings.clearBrowsingData({ cache: true, cookies: true, localStorage: true });
+  showToast(result.success ? 'All browsing data cleared' : 'Failed to clear data');
+});
+
+document.getElementById('extensions-link').addEventListener('click', async () => {
+  const active = await window.browserAPI.tabs.getActive();
+  if (active) {
+    await window.browserAPI.tabs.navigate(active.id, 'browser://extensions');
+  }
+});
+
+loadSettings();
+</script>
+</body>
+</html>
