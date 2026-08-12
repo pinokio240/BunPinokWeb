@@ -90,6 +90,26 @@ main.js          — Main process: window management, protocol handler, IPC
 | About | 2 | 0 |
 | **Total** | **96** | **6 (6%)** |
 
+## 2026-08-12 — v0.1.3 — Code Style Audit & Omnibox Editing Fix
+
+### Completed
+- [x] Full audit for `!!`, `?.`, `??`, `?:` — 0 occurrences left (except regex syntax)
+- [x] Refactored all ternaries to if/else blocks: main.js (3), browser-chrome.html (5), extensions.html (7), settings.html (3)
+- [x] Refactored all optional chaining `?.` to explicit null checks: main.js (9), browser-chrome.html (1), newtab.html (1)
+- [x] Refactored `??` to hasOwnProperty check: settings-store.js (1)
+- [x] Refactored `||` fallbacks to explicit if blocks: main.js (2), tabs.js (1), notifications.js (4), pip.js (1), extensions.js (1), settings.html (6)
+- [x] Refactored `&&` statement shortcuts to if blocks: browser-chrome.html (4)
+- [x] Fixed omnibox editing: refreshTabs no longer overwrites user input while typing (checks document.activeElement)
+- [x] All JS files pass syntax check
+
+### Code Style Rules (user-mandated)
+- NO ternary operators (`?:`)
+- NO optional chaining (`?.`)
+- NO nullish coalescing (`??`)
+- NO double negation (`!!`)
+- NO `||`/`&&` shortcuts as value fallbacks or statement guards
+- Use explicit `if`/`else` blocks everywhere
+
 ## 2026-08-12 — v0.1.2 — Extensions, PiP, Notifications, Downloads
 
 ### Completed

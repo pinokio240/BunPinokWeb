@@ -83,7 +83,10 @@ document.querySelectorAll('.quick-link').forEach(link => {
 });
 async function getActiveTabId() {
   const active = await window.browserAPI.tabs.getActive();
-  return active?.id;
+  if (active) {
+    return active.id;
+  }
+  return null;
 }
 searchBox.focus();
 </script>

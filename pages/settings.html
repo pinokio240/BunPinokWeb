@@ -159,14 +159,33 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
 <script>
 async function loadSettings() {
   const all = await window.browserAPI.settings.getAll();
-  setSelect('setting-onStartup', all['onStartup.page'] || 'newtab');
-  setSelect('setting-theme', all['appearance.theme'] || 'system');
-  setSelect('setting-bookmarks', String(all['appearance.showBookmarksBar'] || false));
-  setSelect('setting-ask-download', String(all['downloads.askBeforeSave'] !== false));
-  setSelect('setting-notifications', String(all['notifications.enabled'] !== false));
-  setSelect('setting-sound', String(all['notifications.soundEnabled'] !== false));
+  let startupPage = 'newtab';
+  if (all['onStartup.page']) {
+    startupPage = all['onStartup.page'];
+  }
+  let theme = 'system';
+  if (all['appearance.theme']) {
+    theme = all['appearance.theme'];
+  }
+  let bookmarks = false;
+  if (all['appearance.showBookmarksBar']) {
+    bookmarks = all['appearance.showBookmarksBar'];
+  }
+  let askDownload = all['downloads.askBeforeSave'] !== false;
+  let notificationsEnabled = all['notifications.enabled'] !== false;
+  let soundEnabled = all['notifications.soundEnabled'] !== false;
 
-  const dlPath = all['downloads.path'] || 'Default';
+  setSelect('setting-onStartup', startupPage);
+  setSelect('setting-theme', theme);
+  setSelect('setting-bookmarks', String(bookmarks));
+  setSelect('setting-ask-download', String(askDownload));
+  setSelect('setting-notifications', String(notificationsEnabled));
+  setSelect('setting-sound', String(soundEnabled));
+
+  let dlPath = 'Default';
+  if (all['downloads.path']) {
+    dlPath = all['downloads.path'];
+  }
   document.getElementById('download-path-label').textContent = dlPath;
 }
 
@@ -226,17 +245,29 @@ document.getElementById('download-path-btn').addEventListener('click', async () 
 
 document.getElementById('clear-cache-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.settings.clearBrowsingData({ cache: true });
-  showToast(result.success ? 'Cache cleared' : 'Failed to clear cache');
+  if (result.success) {
+    showToast('Cache cleared');
+  } else {
+    showToast('Failed to clear cache');
+  }
 });
 
 document.getElementById('clear-cookies-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.settings.clearBrowsingData({ cookies: true, localStorage: true });
-  showToast(result.success ? 'Data cleared' : 'Failed to clear data');
+  if (result.success) {
+    showToast('Data cleared');
+  } else {
+    showToast('Failed to clear data');
+  }
 });
 
 document.getElementById('clear-all-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.settings.clearBrowsingData({ cache: true, cookies: true, localStorage: true });
-  showToast(result.success ? 'All browsing data cleared' : 'Failed to clear data');
+  if (result.success) {
+    showToast('All browsing data cleared');
+  } else {
+    showToast('Failed to clear data');
+  }
 });
 
 document.getElementById('extensions-link').addEventListener('click', async () => {

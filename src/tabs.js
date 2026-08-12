@@ -84,7 +84,10 @@ export class TabManager {
             const remaining = [...this.tabs.keys()];
             if (remaining.length > 0) {
                 const prevIndex = remaining.indexOf(tabId);
-                const newActiveId = remaining[Math.max(0, prevIndex - 1)] || remaining[0];
+                let newActiveId = remaining[Math.max(0, prevIndex - 1)];
+                if (newActiveId === undefined) {
+                    newActiveId = remaining[0];
+                }
                 this.selectTab(newActiveId);
             }
         }

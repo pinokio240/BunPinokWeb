@@ -74,7 +74,10 @@ function setupProtocolHandler() {
                     '.svg': 'image/svg+xml'
                 };
                 const ext = path.extname(fullPath).toLowerCase();
-                const contentType = mimeTypes[ext] || 'text/plain';
+                let contentType = 'text/plain';
+                if (mimeTypes[ext]) {
+                    contentType = mimeTypes[ext];
+                }
                 const body = fs.readFileSync(fullPath);
                 return new Response(body, { headers: { 'content-type': contentType } });
             } catch (err) {
@@ -118,8 +121,14 @@ function setupIpcHandlers() {
             }
             if (types.cookies || types.localStorage) {
                 const clearOptions = {};
-                if (types.cookies) clearOptions.storages = ['cookies'];
-                if (types.localStorage) clearOptions.storages = [...(clearOptions.storages || []), 'localstorage'];
+                const storages = [];
+                if (types.cookies) {
+                    storages.push('cookies');
+                }
+                if (types.localStorage) {
+                    storages.push('localstorage');
+                }
+                clearOptions.storages = storages;
                 await session.defaultSession.clearStorageData(clearOptions);
             }
             return { success: true };
@@ -139,7 +148,10 @@ function setupIpcHandlers() {
     });
 
     ipcMain.handle('tab:create', (_event, url) => {
-        const parsed = url ? OmniboxParser.parse(url) : 'browser://newtab';
+        let parsed = 'browser://newtab';
+        if (url) {
+            parsed = OmniboxParser.parse(url);
+        }
         const tabId = tabManager.createTab(parsed);
         updateChromeViewBounds();
         return { success: true, tabId };
@@ -159,7 +171,12 @@ function setupIpcHandlers() {
         tabManager.selectTab(tabId);
         updateChromeViewBounds();
         const activeTab = tabManager.getActiveTab();
-        return { success: true, url: activeTab ? activeTab.url : '', title: activeTab ? activeTab.title : '' };
+        let result = { success: true, url: '', title: '' };
+        if (activeTab) {
+            result.url = activeTab.url;
+            result.title = activeTab.title;
+        }
+        return result;
     });
 
     ipcMain.handle('tab:getAll', () => {
@@ -173,7 +190,10 @@ function setupIpcHandlers() {
 
     ipcMain.handle('tab:getActive', () => {
         const active = tabManager.getActiveTab();
-        return active ? { id: active.id, url: active.url, title: active.title, isLoading: active.isLoading } : null;
+        if (!active) {
+            return null;
+        }
+        return { id: active.id, url: active.url, title: active.title, isLoading: active.isLoading };
     });
 
     ipcMain.handle('tab:goBack', (_event, tabId) => {
@@ -213,24 +233,34 @@ function setupIpcHandlers() {
     });
 
     ipcMain.handle('window:minimize', () => {
-        mainWindow?.minimize();
+        if (mainWindow) {
+            mainWindow.minimize();
+        }
     });
 
     ipcMain.handle('window:maximize', () => {
-        if (mainWindow?.isMaximized()) {
+        if (!mainWindow) {
+            return false;
+        }
+        if (mainWindow.isMaximized()) {
             mainWindow.unmaximize();
         } else {
-            mainWindow?.maximize();
+            mainWindow.maximize();
         }
-        return mainWindow?.isMaximized();
+        return mainWindow.isMaximized();
     });
 
     ipcMain.handle('window:close', () => {
-        mainWindow?.close();
+        if (mainWindow) {
+            mainWindow.close();
+        }
     });
 
     ipcMain.handle('window:isMaximized', () => {
-        return mainWindow?.isMaximized() || false;
+        if (!mainWindow) {
+            return false;
+        }
+        return mainWindow.isMaximized();
     });
 
     ipcMain.handle('downloads:setPath', async () => {
@@ -364,8 +394,8 @@ app.whenReady().then(async () => {
         {
             label: 'View',
             submenu: [
-                { label: 'Back', accelerator: 'Alt+Left', click: () => { const t = tabManager.getActiveTab(); if (t?.view?.webContents?.navigationHistory?.canGoBack()) t.view.webContents.navigationHistory.goBack(); } },
-                { label: 'Forward', accelerator: 'Alt+Right', click: () => { const t = tabManager.getActiveTab(); if (t?.view?.webContents?.navigationHistory?.canGoForward()) t.view.webContents.navigationHistory.goForward(); } },
+                { label: 'Back', accelerator: 'Alt+Left', click: () => { const t = tabManager.getActiveTab(); if (t && t.view && t.view.webContents && t.view.webContents.navigationHistory && t.view.webContents.navigationHistory.canGoBack()) { t.view.webContents.navigationHistory.goBack(); } } },
+                { label: 'Forward', accelerator: 'Alt+Right', click: () => { const t = tabManager.getActiveTab(); if (t && t.view && t.view.webContents && t.view.webContents.navigationHistory && t.view.webContents.navigationHistory.canGoForward()) { t.view.webContents.navigationHistory.goForward(); } } },
                 { label: 'Reload', accelerator: 'Ctrl+R', click: () => { const t = tabManager.getActiveTab(); if (t) t.view.webContents.reload(); } },
                 { type: 'separator' },
                 { role: 'toggleDevTools' },

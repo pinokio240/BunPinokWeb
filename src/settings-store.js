@@ -48,7 +48,10 @@ export class SettingsStore {
     }
 
     get(key, defaultValue = undefined) {
-        return this.settings[key] ?? defaultValue;
+        if (Object.prototype.hasOwnProperty.call(this.settings, key)) {
+            return this.settings[key];
+        }
+        return defaultValue;
     }
 
     set(key, value) {

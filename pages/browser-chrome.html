@@ -212,11 +212,30 @@ async function init() {
 async function refreshTabs() {
   tabs = await browserAPI.tabs.getAll();
   const active = await browserAPI.tabs.getActive();
-  activeTabId = active?.id;
+  if (active) {
+    activeTabId = active.id;
+  } else {
+    activeTabId = null;
+  }
   renderTabs();
-  if (active) updateOmnibox(active.url);
+  if (active) {
+    const omnibox = $('#omnibox');
+    if (document.activeElement !== omnibox) {
+      updateOmnibox(active.url);
+    }
+  }
   updateNavButtons();
   updateStatusBar();
+}
+
+function getTabLabel(tab) {
+  if (tab.title) {
+    return tab.title;
+  }
+  if (tab.url) {
+    return tab.url;
+  }
+  return 'New Tab';
 }
 
 function renderTabs() {
@@ -224,11 +243,18 @@ function renderTabs() {
   strip.innerHTML = '';
   for (const tab of tabs) {
     const el = document.createElement('div');
-    el.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
-    el.title = tab.title || tab.url || 'New Tab';
+    el.className = 'tab';
+    if (tab.id === activeTabId) {
+      el.className = 'tab active';
+    }
+    el.title = getTabLabel(tab);
+    let spinnerHtml = '';
+    if (tab.isLoading) {
+      spinnerHtml = '<span class="loading-spinner tab-icon"></span>';
+    }
     el.innerHTML = `
-      ${tab.isLoading ? '<span class="loading-spinner tab-icon"></span>' : ''}
-      <span class="tab-title">${escapeHtml(tab.title || tab.url || 'New Tab')}</span>
+      ${spinnerHtml}
+      <span class="tab-title">${escapeHtml(getTabLabel(tab))}</span>
       <span class="tab-close" data-close="${tab.id}">✕</span>
     `;
     el.addEventListener('click', (e) => {
@@ -241,11 +267,16 @@ function renderTabs() {
 }
 
 async function updateOmnibox(url) {
-  if (url && !url.startsWith('browser://')) {
-    $('#omnibox').value = url;
-  } else if (url === 'browser://newtab') {
-    $('#omnibox').value = '';
+  if (!url) {
+    return;
   }
+  if (url.startsWith('browser://')) {
+    if (url === 'browser://newtab') {
+      $('#omnibox').value = '';
+    }
+    return;
+  }
+  $('#omnibox').value = url;
 }
 
 function updateNavButtons() {
@@ -259,9 +290,19 @@ function updateNavButtons() {
 
 function updateStatusBar() {
   const active = tabs.find(t => t.id === activeTabId);
-  if (!active) return;
-  $('#status-url').textContent = active.url || '';
-  $('#status-loading').style.display = active.isLoading ? 'inline-block' : 'none';
+  if (!active) {
+    return;
+  }
+  if (active.url) {
+    $('#status-url').textContent = active.url;
+  } else {
+    $('#status-url').textContent = '';
+  }
+  if (active.isLoading) {
+    $('#status-loading').style.display = 'inline-block';
+  } else {
+    $('#status-loading').style.display = 'none';
+  }
 }
 
 function escapeHtml(str) {
@@ -272,9 +313,21 @@ function escapeHtml(str) {
 
 function setupEventListeners() {
   $('#new-tab-btn').addEventListener('click', () => browserAPI.tabs.create('browser://newtab'));
-  $('#back-btn').addEventListener('click', () => activeTabId && browserAPI.tabs.goBack(activeTabId));
-  $('#forward-btn').addEventListener('click', () => activeTabId && browserAPI.tabs.goForward(activeTabId));
-  $('#reload-btn').addEventListener('click', () => activeTabId && browserAPI.tabs.reload(activeTabId));
+  $('#back-btn').addEventListener('click', () => {
+    if (activeTabId) {
+      browserAPI.tabs.goBack(activeTabId);
+    }
+  });
+  $('#forward-btn').addEventListener('click', () => {
+    if (activeTabId) {
+      browserAPI.tabs.goForward(activeTabId);
+    }
+  });
+  $('#reload-btn').addEventListener('click', () => {
+    if (activeTabId) {
+      browserAPI.tabs.reload(activeTabId);
+    }
+  });
 
   $('#tab-strip').addEventListener('click', (e) => {
     const closeBtn = e.target.closest('[data-close]');
@@ -312,7 +365,9 @@ function setupEventListeners() {
     }
     if (e.ctrlKey && e.key === 'w') {
       e.preventDefault();
-      activeTabId && browserAPI.tabs.close(activeTabId);
+      if (activeTabId) {
+        browserAPI.tabs.close(activeTabId);
+      }
     }
     if (e.ctrlKey && e.key === 'l' && !omniboxFocused) {
       e.preventDefault();
@@ -324,7 +379,11 @@ function setupEventListeners() {
   $('#min-btn').addEventListener('click', () => browserAPI.window.minimize());
   $('#max-btn').addEventListener('click', async () => {
     const isMax = await browserAPI.window.maximize();
-    $('#max-btn').textContent = isMax ? '❐' : '☐';
+    if (isMax) {
+      $('#max-btn').textContent = '❐';
+    } else {
+      $('#max-btn').textContent = '☐';
+    }
   });
   $('#close-btn').addEventListener('click', () => browserAPI.window.close());
 

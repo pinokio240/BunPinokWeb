@@ -97,18 +97,36 @@ async function loadExtensions() {
   }
 
   loadSection.style.display = 'none';
-  list.innerHTML = extensions.map(ext => `
+  const cardsHtml = [];
+  for (const ext of extensions) {
+    let enabledClass = 'off';
+    let enabledTitle = 'Enable';
+    if (ext.enabled) {
+      enabledClass = 'on';
+      enabledTitle = 'Disable';
+    }
+    let description = 'No description';
+    if (ext.description) {
+      description = ext.description;
+    }
+    let removeButtonHtml = '';
+    if (devMode) {
+      removeButtonHtml = `<button class="btn danger" data-remove="${escapeHtml(ext.id)}">Remove</button>`;
+    }
+    cardsHtml.push(`
     <div class="ext-card" data-id="${escapeHtml(ext.id)}">
       <div class="ext-icon">🧩</div>
       <div class="ext-info">
         <div class="ext-name">${escapeHtml(ext.name)}</div>
-        <div class="ext-desc">${escapeHtml(ext.description || 'No description')}</div>
+        <div class="ext-desc">${escapeHtml(description)}</div>
         <div class="ext-id">ID: ${escapeHtml(ext.id).slice(0, 32)}...</div>
       </div>
-      <button class="toggle ${ext.enabled ? 'on' : 'off'}" data-id="${escapeHtml(ext.id)}" title="${ext.enabled ? 'Disable' : 'Enable'}"></button>
-      ${devMode ? `<button class="btn danger" data-remove="${escapeHtml(ext.id)}">Remove</button>` : ''}
+      <button class="toggle ${enabledClass}" data-id="${escapeHtml(ext.id)}" title="${enabledTitle}"></button>
+      ${removeButtonHtml}
     </div>
-  `).join('');
+    `);
+  }
+  list.innerHTML = cardsHtml.join('');
 
   document.querySelectorAll('.toggle').forEach(toggle => {
     toggle.addEventListener('click', async () => {
@@ -125,7 +143,13 @@ async function loadExtensions() {
     btn.addEventListener('click', async () => {
       const extId = btn.dataset.remove;
       const result = await window.browserAPI.extensions.unload(extId);
-      showToast(result.success ? 'Extension removed' : 'Failed to remove', result.success ? '' : 'error');
+      let message = 'Failed to remove';
+      let toastType = 'error';
+      if (result.success) {
+        message = 'Extension removed';
+        toastType = '';
+      }
+      showToast(message, toastType);
       loadExtensions();
     });
   });
@@ -133,20 +157,32 @@ async function loadExtensions() {
 
 function escapeHtml(str) {
   const div = document.createElement('div');
-  div.textContent = str || '';
+  let safeStr = '';
+  if (str) {
+    safeStr = str;
+  }
+  div.textContent = safeStr;
   return div.innerHTML;
 }
 
 function showToast(msg, type) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
-  toast.className = 'toast show' + (type ? ' ' + type : '');
+  if (type) {
+    toast.className = 'toast show ' + type;
+  } else {
+    toast.className = 'toast show';
+  }
   setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
 document.getElementById('dev-mode-toggle').addEventListener('click', function() {
   devMode = !devMode;
-  this.className = 'toggle ' + (devMode ? 'on' : 'off');
+  if (devMode) {
+    this.className = 'toggle on';
+  } else {
+    this.className = 'toggle off';
+  }
   loadExtensions();
 });
 
@@ -156,7 +192,8 @@ document.getElementById('load-ext-btn').addEventListener('click', async () => {
     showToast(`Extension "${result.id}" loaded`);
     loadExtensions();
   } else {
-    showToast(result.error || 'Failed to load extension', 'error');
+    const errorMsg = result.error ? result.error : 'Failed to load extension';
+    showToast(errorMsg, 'error');
   }
 });
 

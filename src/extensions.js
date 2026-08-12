@@ -37,11 +37,15 @@ export class ExtensionManager {
             const ext = await session.defaultSession.loadExtension(extPath, {
                 allowFileAccess: true
             });
+            let description = '';
+            if (manifest.description) {
+                description = manifest.description;
+            }
             this.extensions.set(ext.id, {
                 id: ext.id,
                 name: manifest.name,
                 version: manifest.version,
-                description: manifest.description || '',
+                description: description,
                 path: extPath,
                 enabled: true,
                 extension: ext,

@@ -15,12 +15,29 @@ export class NotificationManager {
     show(title, body, options = {}) {
         if (!this.settingsStore.get('notifications.enabled', true)) return;
 
+        let safeTitle = 'BunPinokWeb';
+        if (title) {
+            safeTitle = title;
+        }
+        let safeBody = '';
+        if (body) {
+            safeBody = body;
+        }
+        let silent = false;
+        if (options.silent) {
+            silent = options.silent;
+        }
+        let urgency = 'normal';
+        if (options.urgency) {
+            urgency = options.urgency;
+        }
+
         const notification = new Notification({
-            title: title || 'BunPinokWeb',
-            body: body || '',
+            title: safeTitle,
+            body: safeBody,
             icon: options.icon,
-            silent: options.silent || false,
-            urgency: options.urgency || 'normal'
+            silent: silent,
+            urgency: urgency
         });
 
         notification.on('click', () => {

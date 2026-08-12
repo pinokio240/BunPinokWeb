@@ -27,6 +27,11 @@ export class PipManager {
             return tabId;
         }
 
+        let pipTitle = 'Video';
+        if (tab.title) {
+            pipTitle = tab.title;
+        }
+
         const pipWin = new BrowserWindow({
             width: 480,
             height: 320,
@@ -39,7 +44,7 @@ export class PipManager {
             resizable: true,
             transparent: true,
             backgroundColor: '#00000000',
-            title: `PiP — ${tab.title || 'Video'}`,
+            title: `PiP — ${pipTitle}`,
             webPreferences: {
                 contextIsolation: true,
                 nodeIntegration: true,
