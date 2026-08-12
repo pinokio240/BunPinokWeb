@@ -122,10 +122,6 @@ async function loadExtensions() {
     if (ext.icon) {
       iconHtml = `<img src="${ext.icon}" style="width:28px;height:28px">`;
     }
-    let removeButtonHtml = '';
-    if (devMode) {
-      removeButtonHtml = `<button class="btn danger" data-remove="${escapeHtml(ext.id)}">Удалить</button>`;
-    }
     cardsHtml.push(`
     <div class="ext-card" data-id="${escapeHtml(ext.id)}">
       <div class="ext-icon">${iconHtml}</div>
@@ -135,7 +131,7 @@ async function loadExtensions() {
         <div class="ext-id">ID: ${escapeHtml(ext.id).slice(0, 32)}...</div>
       </div>
       <button class="toggle ${enabledClass}" data-toggle="${escapeHtml(ext.id)}" title="${enabledTitle}"></button>
-      ${removeButtonHtml}
+      <button class="btn danger" data-remove="${escapeHtml(ext.id)}">Удалить</button>
     </div>
     `);
   }

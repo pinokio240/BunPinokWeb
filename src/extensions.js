@@ -289,6 +289,9 @@ export class ExtensionManager {
     }
 
     async removeExtension(extId) {
+        const registryEntry = this.registry.find((item) => {
+            return item.id === extId;
+        });
         const entry = this.extensions.get(extId);
         if (entry && entry.extension && entry.extension.unload) {
             try {
@@ -302,6 +305,13 @@ export class ExtensionManager {
             return item.id !== extId;
         });
         this._saveRegistry();
+        if (registryEntry && registryEntry.path && registryEntry.path.includes('installed')) {
+            try {
+                fs.rmSync(registryEntry.path, { recursive: true, force: true });
+            } catch (err) {
+                console.error('Не удалось удалить папку расширения:', err);
+            }
+        }
         return true;
     }
 
