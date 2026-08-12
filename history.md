@@ -62,7 +62,35 @@ main.js          — Main process: window management, protocol handler, IPC
 - [ ] Download intercept with session.webRequest
 - [ ] Bookmarks support
 
+## 2026-08-12 — v0.1.1 — Chrome Settings Map & Version Bump
+
+### Completed
+- [x] Electron bumped 33→43.4.0 (latest stable, Chromium 150)
+- [x] User-Agent updated to Chrome/150.0.0.0
+- [x] Full Chrome settings map compiled (96 settings across 15 sections)
+- [x] Gap analysis: ~6% implemented, 94% remaining
+- [x] `docs/chrome-settings-map.md` — complete settings reference with status
+
+### Chrome Settings Coverage
+| Section | Total | Done |
+|---|---|---|
+| Autofill & Passwords | 5 | 0 |
+| Privacy & Security | 45+ | 1 |
+| Performance | 7 | 0 |
+| Appearance | 9 | 0 |
+| Search Engine | 2 | 1 |
+| Default Browser | 1 | 0 |
+| On Startup | 3 | 1 |
+| Languages | 5 | 0 |
+| Downloads | 2 | 2 |
+| Accessibility | 5 | 0 |
+| System | 3 | 0 |
+| Reset | 2 | 0 |
+| Extensions | 5 | 1 |
+| About | 2 | 0 |
+| **Total** | **96** | **6 (6%)** |
+
 ### Known Issues
-- `src/extensions.js` uses CJS `require('electron')` in one place — needs fix for ESM
 - PiP currently creates empty window (video extraction TBD)
 - Sound playback on Windows uses PowerShell Media.SoundPlayer (may not work on all systems)
+- Extensions page needs `showOpenDialog` for directory selection
