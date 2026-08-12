@@ -1,5 +1,29 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.1.4 — UX Fixes: Downloads, Menu, Theme, Hotkeys, Context Menus
+
+### User Bug Report (fixed)
+1. Theme setting did not apply → `nativeTheme.themeSource` + `data-theme` CSS variables in chrome UI
+2. Downloads had no UI → new `browser://downloads` page with progress tracking
+3. File/Edit/View/Help menu invisible (frameless window) → custom ⋮ dropdown menu in UI
+4. ⋮ button opened settings directly → now opens proper dropdown (Downloads, Settings, Extensions, Zoom, Fullscreen, Exit)
+5. Ctrl+W did not work → `before-input-event` on tab webContents + menu accelerator
+6. No context menu on pages → page context menu with Save Image As, Copy Link, Inspect
+7. No copy/save image on pages → implemented via `webContents.downloadURL` + clipboard
+
+### Changes
+- [x] `src/downloads.js` rewritten: tracks items (progressing/completed/cancelled/failed), emits updates
+- [x] `pages/downloads.html` new: list with progress bars, clear finished button
+- [x] `browser://downloads` added to protocol map, Ctrl+J accelerator
+- [x] ⋮ dropdown menu in browser-chrome.html (9 items)
+- [x] Dark theme: `[data-theme="dark"]` CSS vars, `appearance:theme-changed` IPC
+- [x] `applyTheme()` in main: sets `nativeTheme.themeSource`
+- [x] Ctrl+T/W/L via `before-input-event` on every tab webContents
+- [x] Page context menu: Back/Forward/Reload, Cut/Copy/Paste (editable), Copy (selection), Save Image As, Copy Image, Copy Link, Inspect Element
+- [x] Zoom in/out/reset IPC + menu items
+- [x] Fullscreen IPC + menu item
+- [x] preload: downloads.getAll/clearFinished/onUpdated, appearance.getTheme/onThemeChanged, ui.onFocusOmnibox, zoom.*, window.toggleFullscreen
+
 ## 2026-08-12 — v0.1.0 — Project Initialization & Architecture
 
 ### Decision Log

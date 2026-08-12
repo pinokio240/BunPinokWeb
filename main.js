@@ -1,4 +1,4 @@
-import { app, BrowserWindow, WebContentsView, ipcMain, session, protocol, dialog, Notification, Menu } from 'electron';
+import { app, BrowserWindow, WebContentsView, ipcMain, session, protocol, dialog, Notification, Menu, nativeTheme } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -59,7 +59,8 @@ function setupProtocolHandler() {
         const pageMap = {
             'newtab': 'pages/newtab.html',
             'settings': 'pages/settings.html',
-            'extensions': 'pages/extensions.html'
+            'extensions': 'pages/extensions.html',
+            'downloads': 'pages/downloads.html'
         };
 
         const filePath = pageMap[pageName];
@@ -103,6 +104,9 @@ function setupIpcHandlers() {
 
     ipcMain.handle('settings:set', (_event, key, value) => {
         settingsStore.set(key, value);
+        if (key === 'appearance.theme') {
+            applyTheme(value);
+        }
         return { success: true };
     });
 
@@ -321,6 +325,63 @@ function setupIpcHandlers() {
             home: app.getPath('home')
         };
     });
+
+    ipcMain.handle('downloads:getAll', () => {
+        return downloadManager.getAll();
+    });
+
+    ipcMain.handle('downloads:clearFinished', () => {
+        downloadManager.clearFinished();
+        return { success: true };
+    });
+
+    ipcMain.handle('appearance:getTheme', () => {
+        return settingsStore.get('appearance.theme', 'system');
+    });
+
+    ipcMain.handle('window:toggleFullscreen', () => {
+        if (!mainWindow) {
+            return false;
+        }
+        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+        return mainWindow.isFullScreen();
+    });
+
+    ipcMain.handle('zoom:in', () => {
+        const tab = tabManager.getActiveTab();
+        if (tab) {
+            const current = tab.view.webContents.getZoomLevel();
+            tab.view.webContents.setZoomLevel(current + 0.5);
+        }
+    });
+
+    ipcMain.handle('zoom:out', () => {
+        const tab = tabManager.getActiveTab();
+        if (tab) {
+            const current = tab.view.webContents.getZoomLevel();
+            tab.view.webContents.setZoomLevel(current - 0.5);
+        }
+    });
+
+    ipcMain.handle('zoom:reset', () => {
+        const tab = tabManager.getActiveTab();
+        if (tab) {
+            tab.view.webContents.setZoomLevel(0);
+        }
+    });
+}
+
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        nativeTheme.themeSource = 'dark';
+    } else if (theme === 'light') {
+        nativeTheme.themeSource = 'light';
+    } else {
+        nativeTheme.themeSource = 'system';
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('appearance:theme-changed', theme);
+    }
 }
 
 function updateChromeViewBounds() {
@@ -345,7 +406,7 @@ app.whenReady().then(async () => {
     settingsStore = new SettingsStore();
     notificationManager = new NotificationManager(settingsStore);
     pipManager = new PipManager();
-    downloadManager = new DownloadManager(settingsStore);
+    downloadManager = new DownloadManager(settingsStore, () => mainWindow);
 
     setupProtocolHandler();
 
@@ -374,6 +435,7 @@ app.whenReady().then(async () => {
                 { label: 'New Tab', accelerator: 'Ctrl+T', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } },
                 { label: 'New Window', accelerator: 'Ctrl+N', click: () => createMainWindow() },
                 { type: 'separator' },
+                { label: 'Downloads', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
                 { label: 'Settings', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
                 { type: 'separator' },
                 { role: 'quit' }
@@ -397,6 +459,8 @@ app.whenReady().then(async () => {
                 { label: 'Back', accelerator: 'Alt+Left', click: () => { const t = tabManager.getActiveTab(); if (t && t.view && t.view.webContents && t.view.webContents.navigationHistory && t.view.webContents.navigationHistory.canGoBack()) { t.view.webContents.navigationHistory.goBack(); } } },
                 { label: 'Forward', accelerator: 'Alt+Right', click: () => { const t = tabManager.getActiveTab(); if (t && t.view && t.view.webContents && t.view.webContents.navigationHistory && t.view.webContents.navigationHistory.canGoForward()) { t.view.webContents.navigationHistory.goForward(); } } },
                 { label: 'Reload', accelerator: 'Ctrl+R', click: () => { const t = tabManager.getActiveTab(); if (t) t.view.webContents.reload(); } },
+                { type: 'separator' },
+                { label: 'Close Tab', accelerator: 'Ctrl+W', click: () => { const t = tabManager.getActiveTab(); if (t) { tabManager.closeTab(t.id); updateChromeViewBounds(); if (tabManager.getTabCount() === 0) { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } } } },
                 { type: 'separator' },
                 { role: 'toggleDevTools' },
                 { type: 'separator' },
@@ -422,10 +486,14 @@ app.whenReady().then(async () => {
     mainWindow.on('resize', updateChromeViewBounds);
     updateChromeViewBounds();
 
+    applyTheme(settingsStore.get('appearance.theme', 'system'));
+
     const startupUrl = settingsStore.get('onStartup.url', 'browser://newtab');
     const parsed = OmniboxParser.parse(startupUrl);
     tabManager.createTab(parsed);
     updateChromeViewBounds();
+
+    downloadManager.attach(session.defaultSession);
 
     mainWindow.webContents.on('did-finish-load', () => {
         mainWindow.webContents.send('tabs:updated', tabManager.getAllTabs().map(t => ({
@@ -447,29 +515,6 @@ app.whenReady().then(async () => {
         ];
         const menu = Menu.buildFromTemplate(contextMenuTemplate);
         menu.popup({ window: mainWindow });
-    });
-
-    session.defaultSession.on('will-download', async (_event, item) => {
-        const askBeforeSave = settingsStore.get('downloads.askBeforeSave', true);
-        const defaultPath = settingsStore.get('downloads.path', app.getPath('downloads'));
-        const suggestedPath = path.join(defaultPath, item.getFilename());
-
-        if (!askBeforeSave) {
-            item.setSavePath(suggestedPath);
-            return;
-        }
-
-        const result = await dialog.showSaveDialog(mainWindow, {
-            title: 'Save file',
-            defaultPath: suggestedPath,
-            buttonLabel: 'Save'
-        });
-
-        if (result.canceled) {
-            item.cancel();
-        } else {
-            item.setSavePath(result.filePath);
-        }
     });
 
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {

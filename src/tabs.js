@@ -1,4 +1,4 @@
-import { WebContentsView } from 'electron';
+import { WebContentsView, Menu, clipboard } from 'electron';
 
 let nextTabId = 1;
 
@@ -60,6 +60,14 @@ export class TabManager {
             this._notifyUpdate();
         });
 
+        view.webContents.on('before-input-event', (event, input) => {
+            this._handleBeforeInput(event, input, tab);
+        });
+
+        view.webContents.on('context-menu', (_event, params) => {
+            this._showPageContextMenu(tab, params);
+        });
+
         this.mainWindow.contentView.addChildView(view);
         this.selectTab(id);
 
@@ -70,6 +78,89 @@ export class TabManager {
         }
 
         return id;
+    }
+
+    _handleBeforeInput(event, input, tab) {
+        const isCtrl = input.control;
+        const key = input.key.toLowerCase();
+        if (!isCtrl) {
+            return;
+        }
+        if (key === 't') {
+            event.preventDefault();
+            this.createTab('browser://newtab');
+        } else if (key === 'w') {
+            event.preventDefault();
+            this.closeTab(tab.id);
+            if (this.getTabCount() === 0) {
+                this.createTab('browser://newtab');
+            }
+        } else if (key === 'l') {
+            event.preventDefault();
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.webContents.send('ui:focus-omnibox');
+            }
+        }
+    }
+
+    _showPageContextMenu(tab, params) {
+        const template = [];
+
+        if (tab.view.webContents.navigationHistory.canGoBack()) {
+            template.push({ label: 'Back', click: () => tab.view.webContents.navigationHistory.goBack() });
+        }
+        if (tab.view.webContents.navigationHistory.canGoForward()) {
+            template.push({ label: 'Forward', click: () => tab.view.webContents.navigationHistory.goForward() });
+        }
+        template.push({ label: 'Reload', click: () => tab.view.webContents.reload() });
+
+        if (params.isEditable) {
+            template.push({ type: 'separator' });
+            template.push({ label: 'Cut', role: 'cut', enabled: params.editFlags.canCut });
+            template.push({ label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy });
+            template.push({ label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste });
+            template.push({ label: 'Select All', role: 'selectAll', enabled: params.editFlags.canSelectAll });
+        }
+
+        if (params.selectionText) {
+            template.push({ type: 'separator' });
+            template.push({ label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy });
+        }
+
+        if (params.mediaType === 'image') {
+            template.push({ type: 'separator' });
+            template.push({
+                label: 'Save Image As...',
+                click: () => {
+                    if (params.srcURL) {
+                        tab.view.webContents.downloadURL(params.srcURL);
+                    }
+                }
+            });
+            template.push({
+                label: 'Copy Image',
+                click: () => {
+                    if (params.srcURL) {
+                        tab.view.webContents.copyImageAt(params.x, params.y);
+                    }
+                }
+            });
+        }
+
+        if (params.linkURL) {
+            template.push({ type: 'separator' });
+            template.push({ label: 'Copy Link Address', click: () => this._copyToClipboard(params.linkURL) });
+        }
+
+        template.push({ type: 'separator' });
+        template.push({ label: 'Inspect Element', click: () => tab.view.webContents.inspectElement(params.x, params.y) });
+
+        const menu = Menu.buildFromTemplate(template);
+        menu.popup({ window: this.mainWindow });
+    }
+
+    _copyToClipboard(text) {
+        clipboard.writeText(text);
     }
 
     closeTab(tabId) {

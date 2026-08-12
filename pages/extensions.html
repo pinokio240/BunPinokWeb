@@ -192,7 +192,10 @@ document.getElementById('load-ext-btn').addEventListener('click', async () => {
     showToast(`Extension "${result.id}" loaded`);
     loadExtensions();
   } else {
-    const errorMsg = result.error ? result.error : 'Failed to load extension';
+    let errorMsg = 'Failed to load extension';
+    if (result.error) {
+      errorMsg = result.error;
+    }
     showToast(errorMsg, 'error');
   }
 });

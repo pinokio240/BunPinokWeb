@@ -29,6 +29,32 @@
   --btn-primary-hover: #1765cc;
   --btn-danger: #d93025;
   --btn-danger-hover: #c5221f;
+  --menu-bg: #ffffff;
+  --menu-text: #202124;
+  --menu-hover: #f1f3f4;
+  --menu-shadow: rgba(0,0,0,0.25);
+}
+:root[data-theme="dark"] {
+  --chrome-bg: #202124;
+  --chrome-tab-bg: #292a2d;
+  --chrome-tab-active: #35363a;
+  --chrome-tab-hover: #2f3033;
+  --chrome-tab-text: #9aa0a6;
+  --chrome-tab-active-text: #e8eaed;
+  --chrome-toolbar: #35363a;
+  --chrome-omnibox: #202124;
+  --chrome-omnibox-focus: #202124;
+  --chrome-border: #3c4043;
+  --chrome-control-hover: #3c4043;
+  --chrome-close-hover: #d93025;
+  --chrome-control-close: #fff;
+  --chrome-separator: #5f6368;
+  --win-control-hover: #3c4043;
+  --win-close-hover: #e81123;
+  --menu-bg: #35363a;
+  --menu-text: #e8eaed;
+  --menu-hover: #3c4043;
+  --menu-shadow: rgba(0,0,0,0.5);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
@@ -140,10 +166,26 @@ input, button { user-select: auto; }
 #menu-btn {
   width: 32px; height: 32px; border: none; background: transparent;
   border-radius: 50%; cursor: pointer; display: flex;
-  align-items: center; justify-content: center; color: #5f6368;
+  align-items: center; justify-content: center; color: var(--chrome-tab-text);
   font-size: 18px; flex-shrink: 0;
+  position: relative;
 }
 #menu-btn:hover { background: var(--chrome-control-hover); }
+
+#dropdown-menu {
+  position: fixed; top: 76px; right: 8px; width: 280px;
+  background: var(--menu-bg); color: var(--menu-text);
+  border-radius: 8px; box-shadow: 0 4px 16px var(--menu-shadow);
+  padding: 8px 0; display: none; z-index: 300;
+}
+#dropdown-menu.open { display: block; }
+.menu-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 16px; cursor: pointer; font-size: 13px;
+}
+.menu-item:hover { background: var(--menu-hover); }
+.menu-item .menu-icon { width: 18px; text-align: center; font-size: 14px; }
+.menu-separator { height: 1px; background: var(--chrome-border); margin: 6px 0; }
 
 #content-area {
   position: fixed; top: 82px; left: 0; right: 0; bottom: 0;
@@ -186,6 +228,20 @@ input, button { user-select: auto; }
   <input type="text" id="omnibox" placeholder="Search Google or type a URL" spellcheck="false" autocomplete="off">
   <div id="extensions-bar"></div>
   <button id="menu-btn" title="Menu">⋮</button>
+</div>
+
+<div id="dropdown-menu">
+  <div class="menu-item" data-action="new-tab"><span class="menu-icon">🗔</span> New tab <span style="margin-left:auto;opacity:0.5">Ctrl+T</span></div>
+  <div class="menu-item" data-action="downloads"><span class="menu-icon">⬇️</span> Downloads <span style="margin-left:auto;opacity:0.5">Ctrl+J</span></div>
+  <div class="menu-item" data-action="settings"><span class="menu-icon">⚙️</span> Settings</div>
+  <div class="menu-item" data-action="extensions"><span class="menu-icon">🧩</span> Extensions</div>
+  <div class="menu-separator"></div>
+  <div class="menu-item" data-action="zoom-in"><span class="menu-icon">🔍+</span> Zoom in</div>
+  <div class="menu-item" data-action="zoom-out"><span class="menu-icon">🔍−</span> Zoom out</div>
+  <div class="menu-item" data-action="zoom-reset"><span class="menu-icon">🔍</span> Reset zoom</div>
+  <div class="menu-separator"></div>
+  <div class="menu-item" data-action="fullscreen"><span class="menu-icon">⛶</span> Fullscreen</div>
+  <div class="menu-item" data-action="exit"><span class="menu-icon">⏻</span> Exit</div>
 </div>
 
 <div id="content-area"></div>
@@ -387,9 +443,74 @@ function setupEventListeners() {
   });
   $('#close-btn').addEventListener('click', () => browserAPI.window.close());
 
-  $('#menu-btn').addEventListener('click', () => {
-    browserAPI.tabs.create('browser://settings');
+  $('#menu-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const menu = $('#dropdown-menu');
+    if (menu.classList.contains('open')) {
+      menu.classList.remove('open');
+    } else {
+      menu.classList.add('open');
+    }
   });
+
+  document.addEventListener('click', (e) => {
+    const menu = $('#dropdown-menu');
+    if (!menu.contains(e.target) && e.target !== $('#menu-btn')) {
+      menu.classList.remove('open');
+    }
+  });
+
+  $('#dropdown-menu').addEventListener('click', (e) => {
+    const item = e.target.closest('.menu-item');
+    if (!item) {
+      return;
+    }
+    $('#dropdown-menu').classList.remove('open');
+    const action = item.dataset.action;
+    if (action === 'new-tab') {
+      browserAPI.tabs.create('browser://newtab');
+    } else if (action === 'downloads') {
+      browserAPI.tabs.create('browser://downloads');
+    } else if (action === 'settings') {
+      browserAPI.tabs.create('browser://settings');
+    } else if (action === 'extensions') {
+      browserAPI.tabs.create('browser://extensions');
+    } else if (action === 'zoom-in') {
+      browserAPI.zoom.in();
+    } else if (action === 'zoom-out') {
+      browserAPI.zoom.out();
+    } else if (action === 'zoom-reset') {
+      browserAPI.zoom.reset();
+    } else if (action === 'fullscreen') {
+      browserAPI.window.toggleFullscreen();
+    } else if (action === 'exit') {
+      browserAPI.window.close();
+    }
+  });
+
+  browserAPI.ui.onFocusOmnibox(() => {
+    const omnibox = $('#omnibox');
+    omnibox.focus();
+    omnibox.select();
+  });
+
+  browserAPI.appearance.onThemeChanged((theme) => {
+    applyThemeToUI(theme);
+  });
+
+  browserAPI.appearance.getTheme().then((theme) => {
+    applyThemeToUI(theme);
+  });
+}
+
+function applyThemeToUI(theme) {
+  if (theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else if (theme === 'light') {
+    document.documentElement.setAttribute('data-theme', 'light');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
 }
 
 init();

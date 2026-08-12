@@ -28,11 +28,36 @@ contextBridge.exposeInMainWorld('browserAPI', {
         minimize: () => ipcRenderer.invoke('window:minimize'),
         maximize: () => ipcRenderer.invoke('window:maximize'),
         close: () => ipcRenderer.invoke('window:close'),
-        isMaximized: () => ipcRenderer.invoke('window:isMaximized')
+        isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+        toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen')
+    },
+
+    zoom: {
+        in: () => ipcRenderer.invoke('zoom:in'),
+        out: () => ipcRenderer.invoke('zoom:out'),
+        reset: () => ipcRenderer.invoke('zoom:reset')
     },
 
     downloads: {
-        setPath: () => ipcRenderer.invoke('downloads:setPath')
+        setPath: () => ipcRenderer.invoke('downloads:setPath'),
+        getAll: () => ipcRenderer.invoke('downloads:getAll'),
+        clearFinished: () => ipcRenderer.invoke('downloads:clearFinished'),
+        onUpdated: (callback) => {
+            ipcRenderer.on('downloads:updated', (_event, items) => callback(items));
+        }
+    },
+
+    appearance: {
+        getTheme: () => ipcRenderer.invoke('appearance:getTheme'),
+        onThemeChanged: (callback) => {
+            ipcRenderer.on('appearance:theme-changed', (_event, theme) => callback(theme));
+        }
+    },
+
+    ui: {
+        onFocusOmnibox: (callback) => {
+            ipcRenderer.on('ui:focus-omnibox', () => callback());
+        }
     },
 
     pip: {
