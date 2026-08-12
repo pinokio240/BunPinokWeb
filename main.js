@@ -235,6 +235,44 @@ function setupIpcHandlers() {
     ipcMain.handle('omnibox:parse', (_event, input) => {
         return OmniboxParser.parse(input);
     });
+
+    ipcMain.handle('extensions:getAll', () => {
+        return extensionManager.getAllExtensions();
+    });
+
+    ipcMain.handle('extensions:loadUnpacked', async () => {
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openDirectory'],
+            title: 'Select extension folder'
+        });
+        if (!result.canceled && result.filePaths.length > 0) {
+            try {
+                const extId = await extensionManager.loadExtension(result.filePaths[0]);
+                return { success: true, id: extId, extensions: extensionManager.getAllExtensions() };
+            } catch (err) {
+                return { success: false, error: err.message };
+            }
+        }
+        return { success: false, error: 'No folder selected' };
+    });
+
+    ipcMain.handle('extensions:unload', async (_event, extId) => {
+        const result = await extensionManager.unloadExtension(extId);
+        return { success: result, extensions: extensionManager.getAllExtensions() };
+    });
+
+    ipcMain.handle('notifications:show', (_event, title, body, options) => {
+        notificationManager.show(title, body, options);
+        return { success: true };
+    });
+
+    ipcMain.handle('storage:getPath', () => {
+        return {
+            downloads: settingsStore.get('downloads.path', ''),
+            userData: app.getPath('userData'),
+            home: app.getPath('home')
+        };
+    });
 }
 
 function updateChromeViewBounds() {

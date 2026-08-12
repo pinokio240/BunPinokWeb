@@ -8,7 +8,7 @@
 :root {
   --bg: #f1f3f4; --card: #ffffff; --text: #202124; --subtext: #5f6368;
   --border: #dadce0; --accent: #1a73e8; --accent-hover: #1765cc;
-  --danger: #d93025; --toggle-on: #1a73e8; --toggle-off: #dadce0;
+  --danger: #d93025; --danger-hover: #c5221f; --toggle-on: #1a73e8; --toggle-off: #dadce0;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; overflow-y: auto; }
@@ -19,13 +19,13 @@ h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
 .back-link:hover { text-decoration: underline; }
 .ext-card { background: var(--card); border-radius: 8px; padding: 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .ext-icon { width: 48px; height: 48px; border-radius: 8px; background: #e8eaed; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
-.ext-info { flex: 1; }
+.ext-info { flex: 1; min-width: 0; }
 .ext-name { font-weight: 600; font-size: 15px; }
-.ext-desc { font-size: 12px; color: var(--subtext); margin-top: 2px; }
-.ext-version { font-size: 11px; color: var(--subtext); }
+.ext-desc { font-size: 12px; color: var(--subtext); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ext-id { font-size: 11px; color: var(--subtext); margin-top: 2px; font-family: monospace; }
 .toggle {
   width: 36px; height: 20px; border-radius: 10px; border: none;
-  cursor: pointer; position: relative; transition: background 0.2s;
+  cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
 }
 .toggle.on { background: var(--toggle-on); }
 .toggle.off { background: var(--toggle-off); }
@@ -43,59 +43,80 @@ h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
 .btn.danger:hover { background: #fce8e6; }
 .load-section { background: var(--card); border-radius: 8px; padding: 24px; margin-top: 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .load-section p { color: var(--subtext); margin-bottom: 16px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.dev-mode-label { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--subtext); font-size: 13px; }
 .empty-state { text-align: center; padding: 40px; color: var(--subtext); }
 .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #202124; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.toast.error { background: var(--danger); }
 </style>
 </head>
 <body>
 <div class="container">
   <a class="back-link" onclick="history.back()">← Back</a>
-  <h1>Extensions</h1>
-  <p class="subtitle">Manage your browser extensions</p>
+  <div class="toolbar">
+    <div>
+      <h1>Extensions</h1>
+      <p class="subtitle">Manage your browser extensions</p>
+    </div>
+    <label class="dev-mode-label">
+      <div class="toggle on" id="dev-mode-toggle"></div>
+      Developer mode
+    </label>
+  </div>
 
   <div id="extensions-list"></div>
 
-  <div class="load-section">
+  <div class="load-section" id="load-section" style="display:none;">
     <p>Load an unpacked extension to get started</p>
-    <button class="btn primary" id="load-ext-btn">Load unpacked extension</button>
+    <button class="btn primary" id="load-ext-btn">Load unpacked</button>
   </div>
 </div>
 
+<div id="toast" class="toast"></div>
+
 <script>
+let devMode = false;
+
 async function loadExtensions() {
   const list = document.getElementById('extensions-list');
-  const all = await window.browserAPI.settings.getAll();
-  const extensions = all.extensions || [];
+  const loadSection = document.getElementById('load-section');
+  const extensions = await window.browserAPI.extensions.getAll();
 
-  if (extensions.length === 0) {
+  if (!extensions || extensions.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
         <div class="icon">🧩</div>
         <p>No extensions installed</p>
-        <p style="font-size:12px">Load an unpacked extension to add it to the browser</p>
+        <p style="font-size:12px">Click "Load unpacked" in developer mode to add an extension</p>
       </div>
     `;
+    loadSection.style.display = 'block';
     return;
   }
 
+  loadSection.style.display = 'none';
   list.innerHTML = extensions.map(ext => `
-    <div class="ext-card" data-id="${ext.id}">
+    <div class="ext-card" data-id="${escapeHtml(ext.id)}">
       <div class="ext-icon">🧩</div>
       <div class="ext-info">
         <div class="ext-name">${escapeHtml(ext.name)}</div>
-        <div class="ext-desc">${escapeHtml(ext.description || '')}</div>
-        <div class="ext-version">v${escapeHtml(ext.version)}</div>
+        <div class="ext-desc">${escapeHtml(ext.description || 'No description')}</div>
+        <div class="ext-id">ID: ${escapeHtml(ext.id).slice(0, 32)}...</div>
       </div>
-      <button class="toggle ${ext.enabled ? 'on' : 'off'}" data-id="${ext.id}" data-enabled="${ext.enabled}"></button>
-      <button class="btn danger" data-remove="${ext.id}">Remove</button>
+      <button class="toggle ${ext.enabled ? 'on' : 'off'}" data-id="${escapeHtml(ext.id)}" title="${ext.enabled ? 'Disable' : 'Enable'}"></button>
+      ${devMode ? `<button class="btn danger" data-remove="${escapeHtml(ext.id)}">Remove</button>` : ''}
     </div>
   `).join('');
 
   document.querySelectorAll('.toggle').forEach(toggle => {
     toggle.addEventListener('click', async () => {
       const extId = toggle.dataset.id;
-      const enabled = toggle.dataset.enabled === 'true';
-      await window.browserAPI.settings.set(`extension.${extId}.enabled`, !enabled);
+      const isOn = toggle.classList.contains('on');
+      if (isOn) {
+        await window.browserAPI.extensions.unload(extId);
+      }
       loadExtensions();
     });
   });
@@ -103,7 +124,8 @@ async function loadExtensions() {
   document.querySelectorAll('[data-remove]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const extId = btn.dataset.remove;
-      await window.browserAPI.settings.set(`extension.${extId}.removed`, true);
+      const result = await window.browserAPI.extensions.unload(extId);
+      showToast(result.success ? 'Extension removed' : 'Failed to remove', result.success ? '' : 'error');
       loadExtensions();
     });
   });
@@ -111,17 +133,30 @@ async function loadExtensions() {
 
 function escapeHtml(str) {
   const div = document.createElement('div');
-  div.textContent = str;
+  div.textContent = str || '';
   return div.innerHTML;
 }
 
+function showToast(msg, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+document.getElementById('dev-mode-toggle').addEventListener('click', function() {
+  devMode = !devMode;
+  this.className = 'toggle ' + (devMode ? 'on' : 'off');
+  loadExtensions();
+});
+
 document.getElementById('load-ext-btn').addEventListener('click', async () => {
-  if (window.browserAPI.showOpenDialog) {
-    await window.browserAPI.showOpenDialog('directory');
-  }
-  const active = await window.browserAPI.tabs.getActive();
-  if (active) {
-    await window.browserAPI.tabs.navigate(active.id, 'browser://extensions');
+  const result = await window.browserAPI.extensions.loadUnpacked();
+  if (result.success) {
+    showToast(`Extension "${result.id}" loaded`);
+    loadExtensions();
+  } else {
+    showToast(result.error || 'Failed to load extension', 'error');
   }
 });
 

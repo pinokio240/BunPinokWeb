@@ -161,8 +161,21 @@ export class TabManager {
     }
 
     _setupAutoUpdate() {
-        this._updateInterval = setInterval(() => {
-            this._notifyUpdate();
-        }, 2000);
+        this._updateTimer = setInterval(() => {
+            if (this.tabs.size > 0) {
+                this._notifyUpdate();
+            }
+        }, 5000);
+    }
+
+    destroy() {
+        if (this._updateTimer) {
+            clearInterval(this._updateTimer);
+            this._updateTimer = null;
+        }
+        for (const tab of this.tabs.values()) {
+            tab.view.webContents.close();
+        }
+        this.tabs.clear();
     }
 }

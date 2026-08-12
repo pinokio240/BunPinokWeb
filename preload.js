@@ -43,7 +43,17 @@ contextBridge.exposeInMainWorld('browserAPI', {
         parse: (input) => ipcRenderer.invoke('omnibox:parse', input)
     },
 
-    onTabUpdated: (callback) => {
-        ipcRenderer.on('tab:updated', (_event, data) => callback(data));
+    extensions: {
+        getAll: () => ipcRenderer.invoke('extensions:getAll'),
+        loadUnpacked: () => ipcRenderer.invoke('extensions:loadUnpacked'),
+        unload: (extId) => ipcRenderer.invoke('extensions:unload', extId)
+    },
+
+    notifications: {
+        show: (title, body, options) => ipcRenderer.invoke('notifications:show', title, body, options)
+    },
+
+    storage: {
+        getPath: () => ipcRenderer.invoke('storage:getPath')
     }
 });
