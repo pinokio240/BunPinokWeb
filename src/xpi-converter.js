@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import AdmZip from 'adm-zip';
 
 const POLYFILL = `(function () {
     if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.id) {
@@ -167,12 +168,7 @@ const UNSUPPORTED_PERMISSIONS = [
 ];
 
 export class XpiConverter {
-    _requireAdmZip() {
-        return require('adm-zip');
-    }
-
     _unzip(zipBuffer, targetDir) {
-        const AdmZip = this._requireAdmZip();
         const zip = new AdmZip(zipBuffer);
         if (fs.existsSync(targetDir)) {
             fs.rmSync(targetDir, { recursive: true, force: true });

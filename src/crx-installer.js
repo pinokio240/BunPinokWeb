@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import AdmZip from 'adm-zip';
 
 const EXTENSION_ID_PATTERN = /[a-p]{32}/;
 
@@ -98,21 +99,11 @@ export class CrxInstaller {
     }
 
     _extractZip(zipBuffer, targetDir) {
-        const AdmZip = this._requireAdmZip();
         const zip = new AdmZip(zipBuffer);
         if (fs.existsSync(targetDir)) {
             fs.rmSync(targetDir, { recursive: true, force: true });
         }
         zip.extractAllTo(targetDir, true);
-    }
-
-    _requireAdmZip() {
-        try {
-            const admZip = require('adm-zip');
-            return admZip;
-        } catch (err) {
-            throw new Error('adm-zip не установлен. Выполните npm install');
-        }
     }
 
     async _downloadBuffer(url) {
