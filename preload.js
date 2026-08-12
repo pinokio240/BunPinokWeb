@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
         set: (key, value) => ipcRenderer.invoke('settings:set', key, value),
         getAll: () => ipcRenderer.invoke('settings:getAll'),
         clearBrowsingData: (types) => ipcRenderer.invoke('settings:clear-browsing-data', types),
+        resetAll: () => ipcRenderer.invoke('settings:resetAll'),
         onChanged: (callback) => {
             ipcRenderer.on('settings:changed', (_event, all) => callback(all));
         }

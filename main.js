@@ -171,6 +171,17 @@ function setupIpcHandlers() {
         return settingsStore.getAll();
     });
 
+    ipcMain.handle('settings:resetAll', () => {
+        settingsStore.resetAll();
+        applyTheme(settingsStore.get('appearance.theme', 'system'));
+        applySpellcheckSettings();
+        applyProxySettings();
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('settings:changed', settingsStore.getAll());
+        }
+        return { success: true };
+    });
+
     ipcMain.handle('settings:clear-browsing-data', async (_event, types) => {
         try {
             if (types.cache) {
