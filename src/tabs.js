@@ -21,6 +21,8 @@ export class TabManager {
         this.activeTabId = null;
         this.historyStore = null;
         this.settingsStore = null;
+        this.pageZoomFactor = 1.0;
+        this.defaultFontSize = 16;
         this._setupAutoUpdate();
     }
 
@@ -30,12 +32,39 @@ export class TabManager {
 
     setSettingsStore(settingsStore) {
         this.settingsStore = settingsStore;
+        this.pageZoomFactor = settingsStore.get('appearance.pageZoom', 100) / 100;
+        this.defaultFontSize = settingsStore.get('appearance.fontSize', 16);
+    }
+
+    setPageZoom(percent) {
+        this.pageZoomFactor = Number(percent) / 100;
+        for (const tab of this.tabs.values()) {
+            tab.view.webContents.setZoomFactor(this.pageZoomFactor);
+        }
+    }
+
+    setDefaultFontSize(size) {
+        this.defaultFontSize = size;
+    }
+
+    _buildViewOptions() {
+        const options = {};
+        for (const key of Object.keys(this.chromeViewOptions)) {
+            options[key] = this.chromeViewOptions[key];
+        }
+        options.webPreferences = {};
+        for (const key of Object.keys(this.chromeViewOptions.webPreferences)) {
+            options.webPreferences[key] = this.chromeViewOptions.webPreferences[key];
+        }
+        options.webPreferences.defaultFontSize = this.defaultFontSize;
+        return options;
     }
 
     createTab(url = 'browser://newtab') {
         const id = nextTabId++;
-        const view = new WebContentsView(this.chromeViewOptions);
+        const view = new WebContentsView(this._buildViewOptions());
         view.setBackgroundColor('#ffffff');
+        view.webContents.setZoomFactor(this.pageZoomFactor);
 
         const tab = new Tab(id, view, url);
         this.tabs.set(id, tab);

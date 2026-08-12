@@ -121,6 +121,12 @@ function setupIpcHandlers() {
             bookmarksBarVisible = value === true;
             updateChromeViewBounds();
         }
+        if (key === 'appearance.pageZoom') {
+            tabManager.setPageZoom(value);
+        }
+        if (key === 'appearance.fontSize') {
+            tabManager.setDefaultFontSize(value);
+        }
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('settings:changed', settingsStore.getAll());
         }

@@ -1,5 +1,15 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.2.3 — Appearance (Внешний вид)
+
+### Completed
+- [x] Масштаб страницы: select 75–200% в настройках, применяется ко всем вкладкам сразу
+- [x] Размер шрифта: 12–20px, применяется к новым вкладкам (defaultFontSize)
+- [x] Кнопка «Домой»: включение в настройках + настраиваемая домашняя страница
+- [x] TabManager: setPageZoom/setDefaultFontSize, per-view webPreferences
+- [x] settings:changed broadcast — кнопка «Домой» появляется без перезапуска
+- [x] Default settings: appearance.pageZoom/fontSize/showHomeButton/homePage
+
 ## 2026-08-12 — v0.2.2 — Privacy & Security (Приватность)
 
 ### Completed

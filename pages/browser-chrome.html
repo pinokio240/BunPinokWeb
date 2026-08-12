@@ -225,6 +225,7 @@ input, button { user-select: auto; }
 </div>
 
 <div id="toolbar">
+  <button class="nav-btn" id="home-btn" title="Домой" style="display:none">🏠</button>
   <button class="nav-btn" id="back-btn" title="Назад">←</button>
   <button class="nav-btn" id="forward-btn" title="Вперёд">→</button>
   <button class="nav-btn" id="reload-btn" title="Обновить">↻</button>
@@ -255,6 +256,36 @@ async function init() {
   browserAPI.tabs.onUpdated(() => refreshTabs());
   setInterval(refreshTabs, 3000);
   initBookmarksBar();
+  initHomeButton();
+}
+
+async function initHomeButton() {
+  let homePage = 'browser://newtab';
+  const applySettings = async (allSettings) => {
+    const showHome = allSettings['appearance.showHomeButton'] === true;
+    const homeBtn = $('#home-btn');
+    if (showHome) {
+      homeBtn.style.display = '';
+    } else {
+      homeBtn.style.display = 'none';
+    }
+    if (allSettings['appearance.homePage']) {
+      homePage = allSettings['appearance.homePage'];
+    } else {
+      homePage = 'browser://newtab';
+    }
+  };
+  browserAPI.settings.onChanged((allSettings) => {
+    applySettings(allSettings);
+  });
+  const allSettings = await browserAPI.settings.getAll();
+  await applySettings(allSettings);
+  $('#home-btn').addEventListener('click', async () => {
+    const url = await browserAPI.omnibox.parse(homePage);
+    if (activeTabId) {
+      browserAPI.tabs.navigate(activeTabId, url);
+    }
+  });
 }
 
 async function initBookmarksBar() {
