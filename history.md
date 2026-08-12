@@ -6,6 +6,8 @@
 - **Stack**: Electron + Bun. Electron for desktop shell (windows, tabs, IPC, extensions), Bun for package management and scripting. Rejected pure Bun + WebView2 path due to Bun.WebView being headless-only.
 - **License**: MIT for application code. LGPL-2.1 for repository (reflecting Bun's JSC dependency awareness).
 - **Architecture**: Multi-process Electron app with WebContentsView-based tabs.
+- **Electron version**: Updated from 33 → 43.4.0 (latest stable, Aug 2026) with Chromium 150.
+- **User-Agent**: Updated to Chrome/150.0.0.0 matching Electron 43's Chromium engine.
 
 ### Architecture Overview
 ```
