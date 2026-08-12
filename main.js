@@ -1,4 +1,4 @@
-import { app, BrowserWindow, WebContentsView, ipcMain, session, protocol, net, dialog, Notification } from 'electron';
+import { app, BrowserWindow, WebContentsView, ipcMain, session, protocol, dialog, Notification } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -65,10 +65,28 @@ function setupProtocolHandler() {
         const filePath = pageMap[pageName];
         if (filePath) {
             const fullPath = path.join(__dirname, filePath);
-            return net.fetch(`file:///${fullPath.replace(/\\/g, '/')}`);
+            try {
+                const mimeTypes = {
+                    '.html': 'text/html; charset=utf-8',
+                    '.css': 'text/css; charset=utf-8',
+                    '.js': 'application/javascript; charset=utf-8',
+                    '.png': 'image/png',
+                    '.svg': 'image/svg+xml'
+                };
+                const ext = path.extname(fullPath).toLowerCase();
+                const contentType = mimeTypes[ext] || 'text/plain';
+                const body = fs.readFileSync(fullPath);
+                return new Response(body, { headers: { 'content-type': contentType } });
+            } catch (err) {
+                console.error(`Protocol handler error for ${fullPath}:`, err);
+                return new Response('<h1>500 Internal Error</h1>', {
+                    status: 500,
+                    headers: { 'content-type': 'text/html' }
+                });
+            }
         }
 
-        return new Response('<h1>Page not found</h1>', {
+        return new Response('<h1>404 Page not found</h1>', {
             status: 404,
             headers: { 'content-type': 'text/html' }
         });
