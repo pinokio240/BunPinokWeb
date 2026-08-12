@@ -105,5 +105,11 @@ contextBridge.exposeInMainWorld('browserAPI', {
 
     storage: {
         getPath: () => ipcRenderer.invoke('storage:getPath')
+    },
+
+    passwords: {
+        getAll: () => ipcRenderer.invoke('passwords:getAll'),
+        removeByIndex: (index) => ipcRenderer.invoke('passwords:removeByIndex', index),
+        clear: () => ipcRenderer.invoke('passwords:clear')
     }
 });

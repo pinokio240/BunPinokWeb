@@ -15,6 +15,8 @@ import { DownloadManager } from './src/downloads.js';
 import { HistoryStore } from './src/history-store.js';
 import { BookmarkStore } from './src/bookmark-store.js';
 import { PermissionDialogManager } from './src/permission-dialog.js';
+import { PasswordStore } from './src/password-store.js';
+import { AuthDialogManager } from './src/auth-dialog.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -27,6 +29,8 @@ let downloadManager = null;
 let historyStore = null;
 let bookmarkStore = null;
 let permissionDialogManager = null;
+let passwordStore = null;
+let authDialogManager = null;
 let bookmarksBarVisible = false;
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
@@ -72,7 +76,8 @@ function setupProtocolHandler() {
             'downloads': 'pages/downloads.html',
             'history': 'pages/history.html',
             'bookmarks': 'pages/bookmarks.html',
-            'privacy': 'pages/privacy.html'
+            'privacy': 'pages/privacy.html',
+            'passwords': 'pages/passwords.html'
         };
 
         const filePath = pageMap[pageName];
@@ -409,6 +414,7 @@ function setupIpcHandlers() {
             { label: 'Закладки', accelerator: 'Ctrl+Shift+O', click: () => { tabManager.createTab('browser://bookmarks'); updateChromeViewBounds(); } },
             { label: 'Добавить в закладки', accelerator: 'Ctrl+D', click: () => { const t = tabManager.getActiveTab(); if (t) { bookmarkStore.add(t.url, t.title); mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll()); } } },
             { label: 'Перевести страницу', click: () => { translateActiveTab(); } },
+            { label: 'Пароли', click: () => { tabManager.createTab('browser://passwords'); updateChromeViewBounds(); } },
             { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
             { label: 'Приватность', click: () => { tabManager.createTab('browser://privacy'); updateChromeViewBounds(); } },
             { label: 'Расширения', click: () => { tabManager.createTab('browser://extensions'); updateChromeViewBounds(); } },
@@ -516,6 +522,20 @@ function setupIpcHandlers() {
         translateActiveTab();
         return { success: true };
     });
+
+    ipcMain.handle('passwords:getAll', () => {
+        return passwordStore.getAll();
+    });
+
+    ipcMain.handle('passwords:removeByIndex', (_event, index) => {
+        passwordStore.removeByIndex(index);
+        return { success: true };
+    });
+
+    ipcMain.handle('passwords:clear', () => {
+        passwordStore.clear();
+        return { success: true };
+    });
 }
 
 function parseUserInput(input) {
@@ -591,6 +611,8 @@ app.whenReady().then(async () => {
     historyStore = new HistoryStore();
     bookmarkStore = new BookmarkStore();
     permissionDialogManager = new PermissionDialogManager();
+    passwordStore = new PasswordStore();
+    authDialogManager = new AuthDialogManager();
     bookmarksBarVisible = settingsStore.get('appearance.showBookmarksBar', false);
 
     setupProtocolHandler();
@@ -680,6 +702,27 @@ app.whenReady().then(async () => {
 
     applyTheme(settingsStore.get('appearance.theme', 'system'));
     applySpellcheckSettings();
+
+    app.on('login', (event, _webContents, _details, authInfo, callback) => {
+        event.preventDefault();
+        const host = authInfo.host;
+        const realm = authInfo.realm;
+        const saved = passwordStore.find(host, realm);
+        if (saved) {
+            callback(saved.username, saved.password);
+            return;
+        }
+        authDialogManager.requestCredentials(host, realm).then((credentials) => {
+            if (!credentials) {
+                callback();
+                return;
+            }
+            callback(credentials.username, credentials.password);
+            if (credentials.remember) {
+                passwordStore.save(host, realm, credentials.username, credentials.password);
+            }
+        });
+    });
 
     const startupUrl = settingsStore.get('onStartup.url', 'browser://newtab');
     const parsed = parseUserInput(startupUrl);

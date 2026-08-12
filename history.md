@@ -1,5 +1,15 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.3.2 — Passwords (Пароли)
+
+### Completed
+- [x] src/password-store.js: PasswordStore, шифрование safeStorage (fallback на plaintext с пометкой)
+- [x] src/auth-dialog.js: диалог входа (пользователь/пароль/запомнить), Enter, отмена = закрытие
+- [x] app.on('login'): авто-вход из хранилища, иначе диалог, опция «Запомнить»
+- [x] browser://passwords: список (хост/realm/пользователь), удаление по записи, удалить все
+- [x] ⋮ меню: «Пароли»
+- [x] IPC: passwords:getAll/removeByIndex/clear
+
 ## 2026-08-12 — v0.3.1 — Search Engine Selection (Поисковая система)
 
 ### Completed
