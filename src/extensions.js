@@ -154,9 +154,12 @@ export class ExtensionManager {
         const icon = getIconDataUrl(manifest, extPath);
         let popup = '';
         if (manifest.action && manifest.action.default_popup) {
-            popup = path.join(extPath, manifest.action.default_popup);
+            popup = manifest.action.default_popup;
         } else if (manifest.browser_action && manifest.browser_action.default_popup) {
-            popup = path.join(extPath, manifest.browser_action.default_popup);
+            popup = manifest.browser_action.default_popup;
+        }
+        if (popup.startsWith('/')) {
+            popup = popup.slice(1);
         }
 
         const entry = {
@@ -176,7 +179,7 @@ export class ExtensionManager {
             entry.name = registryEntry.name || name;
             entry.version = registryEntry.version || entry.version;
             entry.description = registryEntry.description || description;
-            entry.popup = registryEntry.popup || popup;
+            entry.popup = popup;
             entry.icon = registryEntry.icon || icon;
         }
 
@@ -225,9 +228,12 @@ export class ExtensionManager {
         const icon = getIconDataUrl(manifest, extPath);
         let popup = '';
         if (manifest.action && manifest.action.default_popup) {
-            popup = path.join(extPath, manifest.action.default_popup);
+            popup = manifest.action.default_popup;
         } else if (manifest.browser_action && manifest.browser_action.default_popup) {
-            popup = path.join(extPath, manifest.browser_action.default_popup);
+            popup = manifest.browser_action.default_popup;
+        }
+        if (popup.startsWith('/')) {
+            popup = popup.slice(1);
         }
 
         const entry = {

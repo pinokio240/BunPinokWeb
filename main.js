@@ -763,7 +763,7 @@ function openExtensionPopup(extId, popupPath, x, y) {
         x: Math.round(x),
         y: Math.round(y),
         webPreferences: {
-            contextIsolation: true,
+            contextIsolation: false,
             nodeIntegration: false,
             sandbox: false
         }
@@ -781,7 +781,13 @@ function openExtensionPopup(extId, popupPath, x, y) {
         }
     });
 
-    win.loadFile(popupPath);
+    const popupUrl = 'chrome-extension://' + extId + '/' + popupPath;
+    win.loadURL(popupUrl).catch((err) => {
+        console.error('Не удалось открыть попап расширения:', err);
+        if (!win.isDestroyed()) {
+            win.close();
+        }
+    });
     win.once('ready-to-show', () => {
         win.show();
         win.focus();
