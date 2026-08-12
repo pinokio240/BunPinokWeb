@@ -369,17 +369,27 @@ function setupIpcHandlers() {
 
     ipcMain.handle('extensions:loadUnpacked', async () => {
         const result = await dialog.showOpenDialog(mainWindow, {
-            properties: ['openDirectory'],
-            title: 'Выберите папку расширения'
+            properties: ['openDirectory', 'multiSelections'],
+            title: 'Выберите папки расширений'
         });
         if (!result.canceled && result.filePaths.length > 0) {
-            try {
-                const extId = await extensionManager.loadExtension(result.filePaths[0]);
-                mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
-                return { success: true, id: extId, extensions: extensionManager.getAllExtensions() };
-            } catch (err) {
-                return { success: false, error: err.message };
+            const loaded = [];
+            const errors = [];
+            for (const extPath of result.filePaths) {
+                try {
+                    const extId = await extensionManager.loadExtension(extPath);
+                    loaded.push(extId);
+                } catch (err) {
+                    errors.push(extPath + ': ' + err.message);
+                }
             }
+            mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
+            return {
+                success: loaded.length > 0,
+                loadedCount: loaded.length,
+                errors: errors,
+                extensions: extensionManager.getAllExtensions()
+            };
         }
         return { success: false, error: 'Папка не выбрана' };
     });

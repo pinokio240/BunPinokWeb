@@ -68,9 +68,9 @@ h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
 
   <div id="extensions-list"></div>
 
-  <div class="load-section" id="load-section" style="display:none;">
-    <p>Загрузите распакованное расширение, чтобы начать</p>
-    <button class="btn primary" id="load-ext-btn">Загрузить распакованное</button>
+  <div class="load-section" id="load-section">
+    <p>Загрузите распакованные расширения (можно выбрать несколько папок сразу)</p>
+    <button class="btn primary" id="load-ext-btn">Загрузить распакованные</button>
   </div>
 </div>
 
@@ -81,7 +81,6 @@ let devMode = false;
 
 async function loadExtensions() {
   const list = document.getElementById('extensions-list');
-  const loadSection = document.getElementById('load-section');
   const extensions = await window.browserAPI.extensions.getAll();
 
   if (!extensions || extensions.length === 0) {
@@ -89,14 +88,12 @@ async function loadExtensions() {
       <div class="empty-state">
         <div class="icon">🧩</div>
         <p>Расширения не установлены</p>
-        <p style="font-size:12px">Нажмите «Загрузить распакованное» в режиме разработчика, чтобы добавить расширение</p>
+        <p style="font-size:12px">Нажмите «Загрузить распакованные», чтобы добавить расширения</p>
       </div>
     `;
-    loadSection.style.display = 'block';
     return;
   }
 
-  loadSection.style.display = 'none';
   const cardsHtml = [];
   for (const ext of extensions) {
     let enabledClass = 'off';
@@ -195,12 +192,19 @@ document.getElementById('dev-mode-toggle').addEventListener('click', function() 
 document.getElementById('load-ext-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.extensions.loadUnpacked();
   if (result.success) {
-    showToast(`Расширение "${result.id}" загружено`);
+    let message = 'Загружено расширений: ' + result.loadedCount;
+    if (result.errors && result.errors.length > 0) {
+      message = message + ' | Ошибок: ' + result.errors.length;
+    }
+    showToast(message);
     loadExtensions();
   } else {
-    let errorMsg = 'Не удалось загрузить расширение';
+    let errorMsg = 'Не удалось загрузить расширения';
     if (result.error) {
       errorMsg = result.error;
+    }
+    if (result.errors && result.errors.length > 0) {
+      errorMsg = errorMsg + ': ' + result.errors.join('; ');
     }
     showToast(errorMsg, 'error');
   }
