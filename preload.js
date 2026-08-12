@@ -96,7 +96,13 @@ contextBridge.exposeInMainWorld('browserAPI', {
     extensions: {
         getAll: () => ipcRenderer.invoke('extensions:getAll'),
         loadUnpacked: () => ipcRenderer.invoke('extensions:loadUnpacked'),
-        unload: (extId) => ipcRenderer.invoke('extensions:unload', extId)
+        disable: (extId) => ipcRenderer.invoke('extensions:disable', extId),
+        enable: (extId) => ipcRenderer.invoke('extensions:enable', extId),
+        remove: (extId) => ipcRenderer.invoke('extensions:remove', extId),
+        openPopup: (extId, x, y) => ipcRenderer.invoke('extensions:openPopup', extId, x, y),
+        onUpdated: (callback) => {
+            ipcRenderer.on('extensions:updated', (_event, extensions) => callback(extensions));
+        }
     },
 
     notifications: {

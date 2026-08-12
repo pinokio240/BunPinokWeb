@@ -263,6 +263,47 @@ async function init() {
   setInterval(refreshTabs, 3000);
   initBookmarksBar();
   initHomeButton();
+  initExtensionsBar();
+}
+
+async function initExtensionsBar() {
+  browserAPI.extensions.onUpdated(() => renderExtensionsBar());
+  renderExtensionsBar();
+}
+
+async function renderExtensionsBar() {
+  const bar = $('#extensions-bar');
+  const extensions = await browserAPI.extensions.getAll();
+  if (!extensions || extensions.length === 0) {
+    bar.innerHTML = '';
+    return;
+  }
+  let html = '';
+  for (const ext of extensions) {
+    if (!ext.enabled) {
+      continue;
+    }
+    let iconHtml = '<span style="font-size:14px">🧩</span>';
+    if (ext.icon) {
+      iconHtml = `<img src="${ext.icon}" style="width:16px;height:16px">`;
+    }
+    html += `
+      <div class="ext-icon" data-ext-id="${escapeHtml(ext.id)}" title="${escapeHtml(ext.name)}">
+        ${iconHtml}
+      </div>
+    `;
+  }
+  bar.innerHTML = html;
+  bar.querySelectorAll('.ext-icon').forEach((iconEl) => {
+    iconEl.addEventListener('click', (e) => {
+      const rect = iconEl.getBoundingClientRect();
+      browserAPI.extensions.openPopup(
+        iconEl.dataset.extId,
+        Math.round(rect.left),
+        Math.round(rect.bottom + 4)
+      );
+    });
+  });
 }
 
 async function initHomeButton() {

@@ -82,6 +82,8 @@ export class TabManager {
 
         view.webContents.on('did-navigate', (_event, navUrl) => {
             tab.url = navUrl;
+            tab.http2Retried = false;
+            tab.httpsRetried = false;
             if (this.historyStore) {
                 this.historyStore.add(navUrl, tab.title);
             }
@@ -91,6 +93,27 @@ export class TabManager {
         view.webContents.on('did-navigate-in-page', (_event, navUrl) => {
             tab.url = navUrl;
             this._notifyUpdate();
+        });
+
+        view.webContents.on('did-fail-load', (_event, _errorCode, errorDescription, validatedURL, isMainFrame) => {
+            if (!isMainFrame || !validatedURL || !errorDescription) {
+                return;
+            }
+            if (errorDescription.includes('ERR_HTTP2_SERVER_REFUSED_STREAM')) {
+                if (!tab.http2Retried) {
+                    tab.http2Retried = true;
+                    view.webContents.loadURL(validatedURL, { userAgent: this._getUserAgent() });
+                }
+                return;
+            }
+            const isSslError = errorDescription.includes('ERR_SSL_') || errorDescription.includes('ERR_CERT_');
+            if (isSslError && validatedURL.startsWith('https://')) {
+                if (!tab.httpsRetried) {
+                    tab.httpsRetried = true;
+                    const httpUrl = validatedURL.replace('https://', 'http://');
+                    view.webContents.loadURL(httpUrl, { userAgent: this._getUserAgent() });
+                }
+            }
         });
 
         view.webContents.on('page-title-updated', (_event, title) => {

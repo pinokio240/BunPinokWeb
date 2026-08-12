@@ -1,5 +1,23 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.4.0 — Full Extension Support + UX + HTTP2 Fallback
+
+### ⋮ Menu
+- [x] «Пароли» и «О браузере» добавлены в видимое ⋮ меню (нативное меню не видно в frameless)
+
+### Extensions (полная поддержка)
+- [x] i18n: разрешение `__MSG_xxx__` из _locales (default_locale), фикс `__MSG_extName__`
+- [x] Реестр расширений (registry.json) — расширения переживают перезапуск
+- [x] Включить/выключить (disable = unload без удаления из реестра, enable = повторная загрузка)
+- [x] Удалить (выгрузка + удаление из реестра)
+- [x] Иконки расширений (base64 data URL из manifest icons) на странице и в тулбаре
+- [x] Попапы: клик по иконке в тулбаре → окно 400×500 с action.default_popup, закрытие по потере фокуса
+- [x] IPC: extensions:disable/enable/remove/openPopup + broadcast extensions:updated
+
+### Network
+- [x] ERR_HTTP2_SERVER_REFUSED_STREAM → автоматический повтор один раз
+- [x] SSL-ошибки → fallback на http:// (один раз)
+
 ## 2026-08-12 — v0.3.4 — System (Система)
 
 ### Completed

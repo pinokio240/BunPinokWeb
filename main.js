@@ -357,17 +357,40 @@ function setupIpcHandlers() {
         if (!result.canceled && result.filePaths.length > 0) {
             try {
                 const extId = await extensionManager.loadExtension(result.filePaths[0]);
+                mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
                 return { success: true, id: extId, extensions: extensionManager.getAllExtensions() };
             } catch (err) {
                 return { success: false, error: err.message };
             }
         }
-        return { success: false, error: 'No folder selected' };
+        return { success: false, error: 'Папка не выбрана' };
     });
 
-    ipcMain.handle('extensions:unload', async (_event, extId) => {
-        const result = await extensionManager.unloadExtension(extId);
+    ipcMain.handle('extensions:disable', async (_event, extId) => {
+        await extensionManager.disableExtension(extId);
+        mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
+        return { success: true, extensions: extensionManager.getAllExtensions() };
+    });
+
+    ipcMain.handle('extensions:enable', async (_event, extId) => {
+        const result = await extensionManager.enableExtension(extId);
+        mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
         return { success: result, extensions: extensionManager.getAllExtensions() };
+    });
+
+    ipcMain.handle('extensions:remove', async (_event, extId) => {
+        await extensionManager.removeExtension(extId);
+        mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
+        return { success: true, extensions: extensionManager.getAllExtensions() };
+    });
+
+    ipcMain.handle('extensions:openPopup', (_event, extId, x, y) => {
+        const popupPath = extensionManager.getPopupPath(extId);
+        if (!popupPath) {
+            return { success: false };
+        }
+        openExtensionPopup(extId, popupPath, x, y);
+        return { success: true };
     });
 
     ipcMain.handle('notifications:show', (_event, title, body, options) => {
@@ -444,6 +467,7 @@ function setupIpcHandlers() {
             { label: 'Уменьшить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(t.view.webContents.getZoomLevel() - 0.5); } } },
             { label: 'Сбросить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(0); } } },
             { type: 'separator' },
+            { label: 'О браузере', click: () => { tabManager.createTab('browser://about'); updateChromeViewBounds(); } },
             { label: 'Во весь экран', click: () => { if (mainWindow) { mainWindow.setFullScreen(!mainWindow.isFullScreen()); } } },
             { type: 'separator' },
             { label: 'Выход', click: () => { app.quit(); } }
@@ -652,6 +676,45 @@ function applyProxySettings() {
     } else {
         session.defaultSession.setProxy({ mode: 'system' });
     }
+}
+
+let extensionPopupWindows = [];
+
+function openExtensionPopup(extId, popupPath, x, y) {
+    const win = new BrowserWindow({
+        width: 400,
+        height: 500,
+        frame: false,
+        resizable: false,
+        show: false,
+        x: Math.round(x),
+        y: Math.round(y),
+        webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false
+        }
+    });
+
+    win.on('closed', () => {
+        extensionPopupWindows = extensionPopupWindows.filter((item) => {
+            return item !== win;
+        });
+    });
+
+    win.on('blur', () => {
+        if (!win.isDestroyed()) {
+            win.close();
+        }
+    });
+
+    win.loadFile(popupPath);
+    win.once('ready-to-show', () => {
+        win.show();
+        win.focus();
+    });
+
+    extensionPopupWindows.push(win);
 }
 
 function updateChromeViewBounds() {

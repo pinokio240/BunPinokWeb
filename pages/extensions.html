@@ -89,7 +89,7 @@ async function loadExtensions() {
       <div class="empty-state">
         <div class="icon">🧩</div>
         <p>Расширения не установлены</p>
-        <p style="font-size:12px">Click "Load unpacked" in Режим разработчика to add an extension</p>
+        <p style="font-size:12px">Нажмите «Загрузить распакованное» в режиме разработчика, чтобы добавить расширение</p>
       </div>
     `;
     loadSection.style.display = 'block';
@@ -109,31 +109,37 @@ async function loadExtensions() {
     if (ext.description) {
       description = ext.description;
     }
+    let iconHtml = '<span style="font-size:24px">🧩</span>';
+    if (ext.icon) {
+      iconHtml = `<img src="${ext.icon}" style="width:28px;height:28px">`;
+    }
     let removeButtonHtml = '';
     if (devMode) {
       removeButtonHtml = `<button class="btn danger" data-remove="${escapeHtml(ext.id)}">Удалить</button>`;
     }
     cardsHtml.push(`
     <div class="ext-card" data-id="${escapeHtml(ext.id)}">
-      <div class="ext-icon">🧩</div>
+      <div class="ext-icon">${iconHtml}</div>
       <div class="ext-info">
         <div class="ext-name">${escapeHtml(ext.name)}</div>
         <div class="ext-desc">${escapeHtml(description)}</div>
         <div class="ext-id">ID: ${escapeHtml(ext.id).slice(0, 32)}...</div>
       </div>
-      <button class="toggle ${enabledClass}" data-id="${escapeHtml(ext.id)}" title="${enabledTitle}"></button>
+      <button class="toggle ${enabledClass}" data-toggle="${escapeHtml(ext.id)}" title="${enabledTitle}"></button>
       ${removeButtonHtml}
     </div>
     `);
   }
   list.innerHTML = cardsHtml.join('');
 
-  document.querySelectorAll('.toggle').forEach(toggle => {
+  document.querySelectorAll('[data-toggle]').forEach(toggle => {
     toggle.addEventListener('click', async () => {
-      const extId = toggle.dataset.id;
+      const extId = toggle.dataset.toggle;
       const isOn = toggle.classList.contains('on');
       if (isOn) {
-        await window.browserAPI.extensions.unload(extId);
+        await window.browserAPI.extensions.disable(extId);
+      } else {
+        await window.browserAPI.extensions.enable(extId);
       }
       loadExtensions();
     });
@@ -142,7 +148,7 @@ async function loadExtensions() {
   document.querySelectorAll('[data-remove]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const extId = btn.dataset.remove;
-      const result = await window.browserAPI.extensions.unload(extId);
+      const result = await window.browserAPI.extensions.remove(extId);
       let message = 'Не удалось удалить';
       let toastType = 'error';
       if (result.success) {
