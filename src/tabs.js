@@ -78,6 +78,7 @@ export class TabManager {
             tab.isLoading = false;
             this._notifyUpdate();
             this._maybeAutoTranslate(tab);
+            this._maybeInjectStoreBanner(tab);
         });
 
         view.webContents.on('did-navigate', (_event, navUrl) => {
@@ -180,6 +181,48 @@ export class TabManager {
                 tab.view.webContents.loadURL(translateUrl, { userAgent: this._getUserAgent() });
             })
             .catch(() => {});
+    }
+
+    _maybeInjectStoreBanner(tab) {
+        if (!tab.url.startsWith('https://chromewebstore.google.com/')) {
+            return;
+        }
+        const bannerScript = `(() => {
+            if (document.getElementById('bunpinok-install-banner')) return;
+            if (!window.browserAPI || !window.browserAPI.extensions) return;
+            const match = location.pathname.match(/\\/detail\\/[^/]+\\/([a-p]{32})/);
+            if (!match) return;
+            const banner = document.createElement('div');
+            banner.id = 'bunpinok-install-banner';
+            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#1a73e8;color:#fff;padding:10px 16px;font:14px system-ui;display:flex;justify-content:center;align-items:center;gap:14px;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+            const text = document.createElement('span');
+            text.textContent = 'Это расширение можно установить прямо в BunPinokWeb';
+            const btn = document.createElement('button');
+            btn.textContent = 'Установить';
+            btn.style.cssText = 'background:#fff;color:#1a73e8;border:none;border-radius:4px;padding:7px 18px;font:600 13px system-ui;cursor:pointer;';
+            const close = document.createElement('button');
+            close.textContent = '✕';
+            close.style.cssText = 'background:transparent;color:#fff;border:none;font:14px system-ui;cursor:pointer;';
+            close.addEventListener('click', () => { banner.remove(); });
+            btn.addEventListener('click', async () => {
+                btn.textContent = 'Установка...';
+                btn.disabled = true;
+                const result = await window.browserAPI.extensions.installFromUrl(location.href);
+                if (result.success) {
+                    btn.textContent = 'Установлено ✓';
+                    banner.style.background = '#188038';
+                } else {
+                    btn.textContent = 'Ошибка';
+                    banner.style.background = '#d93025';
+                    setTimeout(() => { banner.remove(); }, 4000);
+                }
+            });
+            banner.appendChild(text);
+            banner.appendChild(btn);
+            banner.appendChild(close);
+            document.documentElement.appendChild(banner);
+        })()`;
+        tab.view.webContents.executeJavaScript(bannerScript).catch(() => {});
     }
 
     _handleWindowOpen(details) {
