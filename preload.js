@@ -61,7 +61,10 @@ contextBridge.exposeInMainWorld('browserAPI', {
         getAll: () => ipcRenderer.invoke('bookmarks:getAll'),
         add: (url, title) => ipcRenderer.invoke('bookmarks:add', url, title),
         remove: (url) => ipcRenderer.invoke('bookmarks:remove', url),
+        toggle: (url, title) => ipcRenderer.invoke('bookmarks:toggle', url, title),
+        has: (url) => ipcRenderer.invoke('bookmarks:has', url),
         toggleCurrent: () => ipcRenderer.invoke('bookmarks:toggleCurrent'),
+        showContextMenu: (url, title, x, y) => ipcRenderer.invoke('bookmarks:showContextMenu', url, title, x, y),
         onUpdated: (callback) => {
             ipcRenderer.on('bookmarks:updated', (_event, bookmarks) => callback(bookmarks));
         },

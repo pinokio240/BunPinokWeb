@@ -14,6 +14,7 @@ import { PipManager } from './src/pip.js';
 import { DownloadManager } from './src/downloads.js';
 import { HistoryStore } from './src/history-store.js';
 import { BookmarkStore } from './src/bookmark-store.js';
+import { PermissionDialogManager } from './src/permission-dialog.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -25,6 +26,7 @@ let pipManager = null;
 let downloadManager = null;
 let historyStore = null;
 let bookmarkStore = null;
+let permissionDialogManager = null;
 let bookmarksBarVisible = false;
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
@@ -399,6 +401,7 @@ function setupIpcHandlers() {
             { label: 'Загрузки', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
             { label: 'История', accelerator: 'Ctrl+H', click: () => { tabManager.createTab('browser://history'); updateChromeViewBounds(); } },
             { label: 'Закладки', accelerator: 'Ctrl+Shift+O', click: () => { tabManager.createTab('browser://bookmarks'); updateChromeViewBounds(); } },
+            { label: 'Добавить в закладки', accelerator: 'Ctrl+D', click: () => { const t = tabManager.getActiveTab(); if (t) { bookmarkStore.add(t.url, t.title); mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll()); } } },
             { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
             { label: 'Приватность', click: () => { tabManager.createTab('browser://privacy'); updateChromeViewBounds(); } },
             { label: 'Расширения', click: () => { tabManager.createTab('browser://extensions'); updateChromeViewBounds(); } },
@@ -451,6 +454,34 @@ function setupIpcHandlers() {
         bookmarkStore.removeByUrl(url);
         mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll());
         return { success: true };
+    });
+
+    ipcMain.handle('bookmarks:has', (_event, url) => {
+        return bookmarkStore.has(url);
+    });
+
+    ipcMain.handle('bookmarks:toggle', (_event, url, title) => {
+        if (bookmarkStore.has(url)) {
+            bookmarkStore.removeByUrl(url);
+            mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll());
+            return { added: false };
+        }
+        bookmarkStore.add(url, title);
+        mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll());
+        return { added: true };
+    });
+
+    ipcMain.handle('bookmarks:showContextMenu', (_event, url, title, x, y) => {
+        const template = [
+            { label: 'Открыть закладку', click: () => { tabManager.createTab(url); updateChromeViewBounds(); } },
+            { label: 'Удалить закладку', click: () => { bookmarkStore.removeByUrl(url); mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll()); } }
+        ];
+        const menu = Menu.buildFromTemplate(template);
+        menu.popup({
+            window: mainWindow,
+            x: Math.round(x),
+            y: Math.round(y)
+        });
     });
 
     ipcMain.handle('bookmarks:toggleCurrent', () => {
@@ -516,6 +547,7 @@ app.whenReady().then(async () => {
     downloadManager = new DownloadManager(settingsStore, () => mainWindow);
     historyStore = new HistoryStore();
     bookmarkStore = new BookmarkStore();
+    permissionDialogManager = new PermissionDialogManager();
     bookmarksBarVisible = settingsStore.get('appearance.showBookmarksBar', false);
 
     setupProtocolHandler();
@@ -635,7 +667,7 @@ app.whenReady().then(async () => {
     });
 
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        callback(isPermissionAllowed(permission));
+        handlePermissionRequest(webContents, permission, callback);
     });
 
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
@@ -654,19 +686,55 @@ app.whenReady().then(async () => {
     });
 });
 
-function isPermissionAllowed(permission) {
+function handlePermissionRequest(webContents, permission, callback) {
+    let origin = 'неизвестный сайт';
+    if (webContents) {
+        try {
+            const url = new URL(webContents.getURL());
+            origin = url.hostname;
+        } catch (err) {
+            origin = 'неизвестный сайт';
+        }
+    }
+
     if (permission === 'notifications') {
-        return settingsStore.get('privacy.notifications', 'allow') === 'allow';
+        resolvePermission('privacy.notifications', permission, origin, callback);
+        return;
     }
     if (permission === 'geolocation') {
-        return settingsStore.get('privacy.geolocation', 'allow') === 'allow';
+        resolvePermission('privacy.geolocation', permission, origin, callback);
+        return;
     }
     if (permission === 'media') {
-        const camera = settingsStore.get('privacy.camera', 'allow') === 'allow';
-        const microphone = settingsStore.get('privacy.microphone', 'allow') === 'allow';
-        return camera || microphone;
+        const cameraMode = settingsStore.get('privacy.camera', 'allow');
+        const microphoneMode = settingsStore.get('privacy.microphone', 'allow');
+        if (cameraMode === 'ask' || microphoneMode === 'ask') {
+            permissionDialogManager.request('media', origin).then((allowed) => {
+                callback(allowed);
+            });
+            return;
+        }
+        if (cameraMode === 'allow' || microphoneMode === 'allow') {
+            callback(true);
+        } else {
+            callback(false);
+        }
+        return;
     }
-    return false;
+    callback(false);
+}
+
+function resolvePermission(settingKey, permission, origin, callback) {
+    const mode = settingsStore.get(settingKey, 'allow');
+    if (mode === 'ask') {
+        permissionDialogManager.request(permission, origin).then((allowed) => {
+            callback(allowed);
+        });
+    } else if (mode === 'allow') {
+        callback(true);
+    } else {
+        callback(false);
+    }
 }
 
 app.on('before-quit', () => {

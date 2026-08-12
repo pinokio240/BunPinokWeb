@@ -1,5 +1,21 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.2.4 — Bookmarks UX + Permission "Ask" Dialogs
+
+### Bookmarks UX
+- [x] Кнопка-звезда в тулбаре (★ активная, ☆ нет) — toggle закладки
+- [x] Пункт «Добавить в закладки» в ⋮ меню (Ctrl+D)
+- [x] Контекстное меню закладки на панели (правый клик): Открыть / Удалить закладку
+- [x] Видимый скроллбар панели закладок (тонкий, появляется при переполнении)
+- [x] IPC: bookmarks:has, bookmarks:toggle, bookmarks:showContextMenu
+
+### Permission "Ask" (Спрашивать)
+- [x] src/permission-dialog.js: всплывающее окно «Запрос разрешения» (frameless, always-on-top)
+- [x] Кнопки Заблокировать/Разрешить; закрытие окна без ответа = отказ
+- [x] Очередь запросов: диалоги показываются по одному (promise chain)
+- [x] privacy.html: у всех разрешений добавлен вариант «Спрашивать»
+- [x] main.js: handlePermissionRequest → allow/block/ask; media объединяет камеру и микрофон
+
 ## 2026-08-12 — v0.2.3 — Appearance (Внешний вид)
 
 ### Completed

@@ -185,7 +185,9 @@ input, button { user-select: auto; }
   overflow-x: auto; overflow-y: hidden; gap: 2px;
 }
 #bookmarks-bar.visible { display: flex; }
-#bookmarks-bar::-webkit-scrollbar { height: 0; }
+#bookmarks-bar::-webkit-scrollbar { height: 6px; }
+#bookmarks-bar::-webkit-scrollbar-track { background: transparent; }
+#bookmarks-bar::-webkit-scrollbar-thumb { background: var(--chrome-separator); border-radius: 3px; }
 .bm-item {
   display: flex; align-items: center; gap: 6px; height: 24px;
   padding: 0 10px; border-radius: 12px; cursor: pointer;
@@ -195,6 +197,8 @@ input, button { user-select: auto; }
 .bm-item:hover { background: var(--chrome-control-hover); }
 .bm-item .bm-star { font-size: 12px; }
 .bm-empty { font-size: 12px; color: var(--chrome-tab-text); padding: 0 8px; }
+#bookmark-btn { font-size: 16px; color: var(--chrome-tab-text); }
+#bookmark-btn.active { color: #f9ab00; }
 
 #status-bar {
   position: fixed; bottom: 0; left: 0; right: 0; height: 22px;
@@ -231,6 +235,7 @@ input, button { user-select: auto; }
   <button class="nav-btn" id="forward-btn" title="Вперёд">→</button>
   <button class="nav-btn" id="reload-btn" title="Обновить">↻</button>
   <input type="text" id="omnibox" placeholder="Найдите в Google или введите URL" spellcheck="false" autocomplete="off">
+  <button class="nav-btn" id="bookmark-btn" title="Добавить в закладки (Ctrl+D)">☆</button>
   <div id="extensions-bar"></div>
   <button id="menu-btn" title="Меню">⋮</button>
 </div>
@@ -290,7 +295,10 @@ async function initHomeButton() {
 }
 
 async function initBookmarksBar() {
-  browserAPI.bookmarks.onUpdated(() => renderBookmarksBar());
+  browserAPI.bookmarks.onUpdated(() => {
+    renderBookmarksBar();
+    updateBookmarkStar();
+  });
   browserAPI.settings.onChanged((allSettings) => {
     const showBar = allSettings['appearance.showBookmarksBar'] === true;
     if (showBar) {
@@ -319,9 +327,9 @@ async function renderBookmarksBar() {
     return;
   }
   let html = '';
-  for (const bookmark of bookmarks.slice(0, 20)) {
+  for (const bookmark of bookmarks) {
     html += `
-      <div class="bm-item" data-url="${escapeHtml(bookmark.url)}">
+      <div class="bm-item" data-url="${escapeHtml(bookmark.url)}" data-title="${escapeHtml(bookmark.title)}">
         <span class="bm-star">⭐</span>
         <span>${escapeHtml(bookmark.title)}</span>
       </div>
@@ -334,7 +342,35 @@ async function renderBookmarksBar() {
         browserAPI.tabs.navigate(activeTabId, item.dataset.url);
       }
     });
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const rect = item.getBoundingClientRect();
+      browserAPI.bookmarks.showContextMenu(
+        item.dataset.url,
+        item.dataset.title,
+        Math.round(rect.left),
+        Math.round(rect.bottom)
+      );
+    });
   });
+}
+
+async function updateBookmarkStar() {
+  const active = tabs.find(t => t.id === activeTabId);
+  const starBtn = $('#bookmark-btn');
+  if (!active) {
+    starBtn.classList.remove('active');
+    starBtn.textContent = '☆';
+    return;
+  }
+  const isBookmarked = await browserAPI.bookmarks.has(active.url);
+  if (isBookmarked) {
+    starBtn.classList.add('active');
+    starBtn.textContent = '★';
+  } else {
+    starBtn.classList.remove('active');
+    starBtn.textContent = '☆';
+  }
 }
 
 async function refreshTabs() {
@@ -354,6 +390,7 @@ async function refreshTabs() {
   }
   updateNavButtons();
   updateStatusBar();
+  updateBookmarkStar();
 }
 
 function getTabLabel(tab) {
@@ -456,6 +493,14 @@ function setupEventListeners() {
   $('#reload-btn').addEventListener('click', () => {
     if (activeTabId) {
       browserAPI.tabs.reload(activeTabId);
+    }
+  });
+  $('#bookmark-btn').addEventListener('click', async () => {
+    const active = tabs.find(t => t.id === activeTabId);
+    if (active) {
+      await browserAPI.bookmarks.toggle(active.url, active.title);
+      renderBookmarksBar();
+      updateBookmarkStar();
     }
   });
 
