@@ -759,7 +759,7 @@ function openExtensionPopup(extId, popupPath, x, y) {
         height: 300,
         frame: false,
         parent: mainWindow,
-        movable: false,
+        movable: true,
         minimizable: false,
         maximizable: false,
         fullscreenable: false,
@@ -816,6 +816,18 @@ function openExtensionPopup(extId, popupPath, x, y) {
         if (!win.isDestroyed()) {
             win.close();
         }
+    });
+    win.webContents.on('did-finish-load', () => {
+        const dragInjection = `(() => {
+            if (document.getElementById('bunpinok-drag')) return;
+            const style = document.createElement('style');
+            style.textContent = '#bunpinok-drag{position:fixed;top:0;left:0;right:0;height:14px;-webkit-app-region:drag;z-index:2147483647;cursor:move;}';
+            document.head.appendChild(style);
+            const handle = document.createElement('div');
+            handle.id = 'bunpinok-drag';
+            document.body.appendChild(handle);
+        })()`;
+        win.webContents.executeJavaScript(dragInjection).catch(() => {});
     });
     win.once('ready-to-show', () => {
         win.show();
