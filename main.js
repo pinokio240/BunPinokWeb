@@ -12,6 +12,7 @@ import { ExtensionManager } from './src/extensions.js';
 import { NotificationManager } from './src/notifications.js';
 import { PipManager } from './src/pip.js';
 import { DownloadManager } from './src/downloads.js';
+import { HistoryStore } from './src/history-store.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -21,6 +22,7 @@ let extensionManager = null;
 let notificationManager = null;
 let pipManager = null;
 let downloadManager = null;
+let historyStore = null;
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
 
@@ -62,7 +64,8 @@ function setupProtocolHandler() {
             'newtab': 'pages/newtab.html',
             'settings': 'pages/settings.html',
             'extensions': 'pages/extensions.html',
-            'downloads': 'pages/downloads.html'
+            'downloads': 'pages/downloads.html',
+            'history': 'pages/history.html'
         };
 
         const filePath = pageMap[pageName];
@@ -376,6 +379,7 @@ function setupIpcHandlers() {
         const template = [
             { label: 'Новая вкладка', accelerator: 'Ctrl+T', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } },
             { label: 'Загрузки', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
+            { label: 'История', accelerator: 'Ctrl+H', click: () => { tabManager.createTab('browser://history'); updateChromeViewBounds(); } },
             { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
             { label: 'Расширения', click: () => { tabManager.createTab('browser://extensions'); updateChromeViewBounds(); } },
             { type: 'separator' },
@@ -393,6 +397,24 @@ function setupIpcHandlers() {
             x: Math.round(x),
             y: Math.round(y)
         });
+    });
+
+    ipcMain.handle('history:getAll', () => {
+        return historyStore.getAll();
+    });
+
+    ipcMain.handle('history:search', (_event, query) => {
+        return historyStore.search(query);
+    });
+
+    ipcMain.handle('history:clear', () => {
+        historyStore.clear();
+        return { success: true };
+    });
+
+    ipcMain.handle('history:removeByTimestamp', (_event, timestamp) => {
+        historyStore.removeByTimestamp(timestamp);
+        return { success: true };
     });
 }
 
@@ -432,6 +454,7 @@ app.whenReady().then(async () => {
     notificationManager = new NotificationManager(settingsStore);
     pipManager = new PipManager();
     downloadManager = new DownloadManager(settingsStore, () => mainWindow);
+    historyStore = new HistoryStore();
 
     setupProtocolHandler();
 
@@ -451,6 +474,7 @@ app.whenReady().then(async () => {
     mainWindow.contentView.addChildView(chromeView);
 
     tabManager = new TabManager(mainWindow, chromeViewOptions);
+    tabManager.setHistoryStore(historyStore);
     extensionManager = new ExtensionManager(tabManager);
 
     const menuTemplate = [
@@ -461,6 +485,7 @@ app.whenReady().then(async () => {
                 { label: 'Новое окно', accelerator: 'Ctrl+N', click: () => createMainWindow() },
                 { type: 'separator' },
                 { label: 'Загрузки', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
+                { label: 'История', accelerator: 'Ctrl+H', click: () => { tabManager.createTab('browser://history'); updateChromeViewBounds(); } },
                 { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
                 { type: 'separator' },
                 { role: 'quit', label: 'Выход' }

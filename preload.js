@@ -47,6 +47,13 @@ contextBridge.exposeInMainWorld('browserAPI', {
         }
     },
 
+    history: {
+        getAll: () => ipcRenderer.invoke('history:getAll'),
+        search: (query) => ipcRenderer.invoke('history:search', query),
+        clear: () => ipcRenderer.invoke('history:clear'),
+        removeByTimestamp: (timestamp) => ipcRenderer.invoke('history:removeByTimestamp', timestamp)
+    },
+
     appearance: {
         getTheme: () => ipcRenderer.invoke('appearance:getTheme'),
         onThemeChanged: (callback) => {

@@ -19,7 +19,12 @@ export class TabManager {
         this.chromeViewOptions = chromeViewOptions;
         this.tabs = new Map();
         this.activeTabId = null;
+        this.historyStore = null;
         this._setupAutoUpdate();
+    }
+
+    setHistoryStore(historyStore) {
+        this.historyStore = historyStore;
     }
 
     createTab(url = 'browser://newtab') {
@@ -42,6 +47,9 @@ export class TabManager {
 
         view.webContents.on('did-navigate', (_event, navUrl) => {
             tab.url = navUrl;
+            if (this.historyStore) {
+                this.historyStore.add(navUrl, tab.title);
+            }
             this._notifyUpdate();
         });
 

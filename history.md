@@ -1,5 +1,16 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.2.0 — History (История)
+
+### Completed
+- [x] `src/history-store.js`: HistoryStore — JSON persistence in userData, dedup, MAX 5000 entries
+- [x] `pages/history.html`: история с группировкой по дням, поиском, удалением, очисткой
+- [x] `browser://history` в protocol map
+- [x] Ctrl+H акселератор (меню Файл + ⋮ меню)
+- [x] Запись посещений в did-navigate каждой вкладки (внутренние browser:// страницы не пишутся)
+- [x] IPC: history:getAll, history:search, history:clear, history:removeByTimestamp
+- [x] preload: browserAPI.history
+
 ## 2026-08-12 — v0.1.6 — Native App Menu (fix: dropdown hidden under page)
 
 ### Bug

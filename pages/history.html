@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>История - BunPinokWeb</title>
+<style>
+:root {
+  --bg: #f1f3f4; --card: #ffffff; --text: #202124; --subtext: #5f6368;
+  --border: #dadce0; --accent: #1a73e8; --accent-hover: #1765cc; --danger: #d93025;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; overflow-y: auto; }
+.container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
+.subtitle { color: var(--subtext); margin-bottom: 24px; }
+.back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; cursor: pointer; }
+.back-link:hover { text-decoration: underline; }
+.toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.search-box {
+  flex: 1; min-width: 200px; height: 40px; padding: 0 16px;
+  border: 1px solid var(--border); border-radius: 20px;
+  background: var(--card); font-size: 14px; outline: none;
+}
+.search-box:focus { border-color: var(--accent); }
+.btn { padding: 9px 16px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; background: var(--card); color: var(--accent); white-space: nowrap; }
+.btn:hover { background: #e8f0fe; }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.danger:hover { background: #fce8e6; }
+.history-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px; border-radius: 8px; cursor: pointer;
+}
+.history-item:hover { background: rgba(26,115,232,0.06); }
+.history-time { width: 90px; flex-shrink: 0; font-size: 12px; color: var(--subtext); }
+.history-info { flex: 1; min-width: 0; }
+.history-title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-url { font-size: 12px; color: var(--subtext); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-remove { width: 28px; height: 28px; border: none; border-radius: 50%; background: transparent; cursor: pointer; color: var(--subtext); font-size: 14px; flex-shrink: 0; }
+.history-remove:hover { background: var(--border); }
+.date-group { font-size: 13px; font-weight: 600; color: var(--subtext); margin: 16px 0 4px; }
+.empty-state { text-align: center; padding: 60px; color: var(--subtext); }
+.empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back-link" onclick="history.back()">← Назад</a>
+  <h1>История</h1>
+  <p class="subtitle">Журнал посещённых страниц</p>
+
+  <div class="toolbar">
+    <input type="text" class="search-box" id="search-box" placeholder="Поиск в истории" spellcheck="false">
+    <button class="btn danger" id="clear-btn">Очистить историю</button>
+  </div>
+
+  <div id="history-list"></div>
+</div>
+
+<script>
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  let safeStr = '';
+  if (str) {
+    safeStr = str;
+  }
+  div.textContent = safeStr;
+  return div.innerHTML;
+}
+
+function formatTime(timestamp) {
+  const d = new Date(timestamp);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const thatDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((today - thatDay) / 86400000);
+
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+
+  if (diffDays === 0) {
+    return hh + ':' + mm;
+  }
+  if (diffDays === 1) {
+    return 'Вчера';
+  }
+  const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  return d.getDate() + ' ' + months[d.getMonth()];
+}
+
+function formatDateLabel(timestamp) {
+  const d = new Date(timestamp);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const thatDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((today - thatDay) / 86400000);
+
+  if (diffDays === 0) {
+    return 'Сегодня';
+  }
+  if (diffDays === 1) {
+    return 'Вчера';
+  }
+  const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+  return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+async function renderHistory() {
+  const query = document.getElementById('search-box').value.trim();
+  let entries;
+  if (query) {
+    entries = await window.browserAPI.history.search(query);
+  } else {
+    entries = await window.browserAPI.history.getAll();
+  }
+
+  const list = document.getElementById('history-list');
+
+  if (!entries || entries.length === 0) {
+    let emptyMessage = 'История пуста';
+    if (query) {
+      emptyMessage = 'Ничего не найдено';
+    }
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🕐</div>
+        <p>${emptyMessage}</p>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  let currentDateLabel = '';
+  for (const entry of entries) {
+    const dateLabel = formatDateLabel(entry.timestamp);
+    if (dateLabel !== currentDateLabel) {
+      currentDateLabel = dateLabel;
+      html += `<div class="date-group">${dateLabel}</div>`;
+    }
+    html += `
+      <div class="history-item" data-url="${escapeHtml(entry.url)}">
+        <div class="history-time">${formatTime(entry.timestamp)}</div>
+        <div class="history-info">
+          <div class="history-title">${escapeHtml(entry.title)}</div>
+          <div class="history-url">${escapeHtml(entry.url)}</div>
+        </div>
+        <button class="history-remove" data-timestamp="${entry.timestamp}" title="Удалить">✕</button>
+      </div>
+    `;
+  }
+  list.innerHTML = html;
+
+  document.querySelectorAll('.history-item').forEach((item) => {
+    item.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('history-remove')) {
+        return;
+      }
+      const url = item.dataset.url;
+      const active = await window.browserAPI.tabs.getActive();
+      if (active) {
+        await window.browserAPI.tabs.navigate(active.id, url);
+      }
+    });
+  });
+
+  document.querySelectorAll('.history-remove').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const timestamp = parseInt(btn.dataset.timestamp);
+      await window.browserAPI.history.removeByTimestamp(timestamp);
+      renderHistory();
+    });
+  });
+}
+
+document.getElementById('search-box').addEventListener('input', () => {
+  renderHistory();
+});
+
+document.getElementById('clear-btn').addEventListener('click', async () => {
+  await window.browserAPI.history.clear();
+  renderHistory();
+});
+
+renderHistory();
+</script>
+</body>
+</html>
