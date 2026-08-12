@@ -26,7 +26,8 @@ const DEFAULT_SETTINGS = {
     'privacy.dnt': false,
     'language.spellcheck': true,
     'language.spellcheckLanguages': 'ru,en',
-    'language.autoTranslate': false
+    'language.autoTranslate': false,
+    'search.engine': 'google'
 };
 
 export class SettingsStore {

@@ -189,6 +189,22 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
   </div>
 
   <div class="section">
+    <div class="section-title">Поисковая система</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Поисковая система по умолчанию</div>
+        <div class="desc">Используется при поиске из адресной строки</div>
+      </div>
+      <select id="setting-search">
+        <option value="google">Google</option>
+        <option value="yandex">Яндекс</option>
+        <option value="bing">Bing</option>
+        <option value="duckduckgo">DuckDuckGo</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
     <div class="section-title">Языки</div>
     <div class="row">
       <div class="row-label">
@@ -297,6 +313,12 @@ async function loadSettings() {
   let autoTranslate = all['language.autoTranslate'] === true;
   setSelect('setting-autotranslate', String(autoTranslate));
 
+  let searchEngine = 'google';
+  if (all['search.engine']) {
+    searchEngine = all['search.engine'];
+  }
+  setSelect('setting-search', searchEngine);
+
   let dlPath = 'По умолчанию';
   if (all['downloads.path']) {
     dlPath = all['downloads.path'];
@@ -371,6 +393,11 @@ document.getElementById('setting-spelllangs').addEventListener('change', async (
 
 document.getElementById('setting-autotranslate').addEventListener('change', async (e) => {
   await window.browserAPI.settings.set('language.autoTranslate', e.target.value === 'true');
+  showToast('Сохранено');
+});
+
+document.getElementById('setting-search').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('search.engine', e.target.value);
   showToast('Сохранено');
 });
 

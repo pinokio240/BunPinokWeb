@@ -1,5 +1,12 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.3.1 — Search Engine Selection (Поисковая система)
+
+### Completed
+- [x] OmniboxParser параметризован движком: Google/Яндекс/Bing/DuckDuckGo
+- [x] Настройка search.engine в настройках («Поисковая система»)
+- [x] Все точки входа используют выбранный движок (omnibox, home button, tab:create/navigate, startup)
+
 ## 2026-08-12 — v0.3.0 — Languages (Языки)
 
 ### Completed

@@ -175,7 +175,7 @@ function setupIpcHandlers() {
     ipcMain.handle('tab:navigate', (_event, tabId, url) => {
         const tab = tabManager.getTab(tabId);
         if (tab) {
-            const parsed = OmniboxParser.parse(url);
+            const parsed = parseUserInput(url);
             tabManager.navigateTab(tabId, parsed);
             return { success: true, url: parsed };
         }
@@ -185,7 +185,7 @@ function setupIpcHandlers() {
     ipcMain.handle('tab:create', (_event, url) => {
         let parsed = 'browser://newtab';
         if (url) {
-            parsed = OmniboxParser.parse(url);
+            parsed = parseUserInput(url);
         }
         const tabId = tabManager.createTab(parsed);
         updateChromeViewBounds();
@@ -316,7 +316,7 @@ function setupIpcHandlers() {
     });
 
     ipcMain.handle('omnibox:parse', (_event, input) => {
-        return OmniboxParser.parse(input);
+        return OmniboxParser.parse(input, settingsStore.get('search.engine', 'google'));
     });
 
     ipcMain.handle('extensions:getAll', () => {
@@ -518,6 +518,10 @@ function setupIpcHandlers() {
     });
 }
 
+function parseUserInput(input) {
+    return OmniboxParser.parse(input, settingsStore.get('search.engine', 'google'));
+}
+
 function applyTheme(theme) {
     if (theme === 'dark') {
         nativeTheme.themeSource = 'dark';
@@ -678,7 +682,7 @@ app.whenReady().then(async () => {
     applySpellcheckSettings();
 
     const startupUrl = settingsStore.get('onStartup.url', 'browser://newtab');
-    const parsed = OmniboxParser.parse(startupUrl);
+    const parsed = parseUserInput(startupUrl);
     tabManager.createTab(parsed);
     updateChromeViewBounds();
 
