@@ -87,7 +87,8 @@ contextBridge.exposeInMainWorld('browserAPI', {
     },
 
     pip: {
-        open: (tabId) => ipcRenderer.invoke('pip:open', tabId)
+        open: (tabId) => ipcRenderer.invoke('pip:open', tabId),
+        openActive: () => ipcRenderer.invoke('pip:openActive')
     },
 
     omnibox: {

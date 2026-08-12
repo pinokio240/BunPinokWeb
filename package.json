@@ -1,13 +1,13 @@
 {
   "name": "bunpinokweb",
-  "version": "0.1.0",
+  "version": "0.4.1",
   "description": "Chrome-like desktop browser built on Electron + Bun",
   "main": "main.js",
   "type": "module",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "build": "electron-builder"
+    "dist": "electron-builder --win"
   },
   "author": "pinokio240",
   "license": "MIT",
@@ -17,5 +17,37 @@
   "devDependencies": {
     "electron": "^43.0.0",
     "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.pinokio240.bunpinokweb",
+    "productName": "BunPinokWeb",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "pages/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "BunPinokWeb-${version}-setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "BunPinokWeb"
+    }
   }
 }

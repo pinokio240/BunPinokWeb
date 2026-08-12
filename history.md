@@ -1,5 +1,19 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.4.2 — PiP Player + Packaging
+
+### PiP
+- [x] Извлечение видео: executeJavaScript в вкладке → src/currentTime/paused/title
+- [x] PiP-окно: реальный источник видео, позиция воспроизведения, play/pause, перетаскивание
+- [x] blob:-источники: понятное сообщение (потоковое видео извлечь нельзя)
+- [x] ⋮ меню: «Картинка в картинке (PiP)» — активная вкладка
+- [x] IPC: pip:openActive, pip:config, pip:togglePlay
+
+### Packaging
+- [x] electron-builder конфиг: NSIS-инсталлятор x64, ярлыки, выбор папки установки
+- [x] `npm run dist` — сборка .exe
+- [x] version 0.4.1
+
 ## 2026-08-12 — v0.4.1 — Settings Redesign (вкладки по разделам)
 
 ### Completed

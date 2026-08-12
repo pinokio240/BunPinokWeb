@@ -347,9 +347,16 @@ function setupIpcHandlers() {
         return { success: false };
     });
 
-    ipcMain.handle('pip:open', (_event, tabId) => {
-        pipManager.openPip(tabId, tabManager);
-        return { success: true };
+    ipcMain.handle('pip:open', async (_event, tabId) => {
+        return await pipManager.openPip(tabId, tabManager);
+    });
+
+    ipcMain.handle('pip:openActive', async () => {
+        const tab = tabManager.getActiveTab();
+        if (!tab) {
+            return { success: false, error: 'Нет активной вкладки' };
+        }
+        return await pipManager.openPip(tab.id, tabManager);
     });
 
     ipcMain.handle('omnibox:parse', (_event, input) => {
@@ -469,6 +476,7 @@ function setupIpcHandlers() {
             { label: 'Закладки', accelerator: 'Ctrl+Shift+O', click: () => { tabManager.createTab('browser://bookmarks'); updateChromeViewBounds(); } },
             { label: 'Добавить в закладки', accelerator: 'Ctrl+D', click: () => { const t = tabManager.getActiveTab(); if (t) { bookmarkStore.add(t.url, t.title); mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll()); } } },
             { label: 'Перевести страницу', click: () => { translateActiveTab(); } },
+            { label: 'Картинка в картинке (PiP)', click: () => { const t = tabManager.getActiveTab(); if (t) { pipManager.openPip(t.id, tabManager); } } },
             { label: 'Пароли', click: () => { tabManager.createTab('browser://passwords'); updateChromeViewBounds(); } },
             { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
             { label: 'Приватность', click: () => { tabManager.createTab('browser://privacy'); updateChromeViewBounds(); } },
