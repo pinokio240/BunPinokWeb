@@ -1,5 +1,68 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.5.0 — ИТОГИ ДНЯ (сессия завершена)
+
+### Полная хронология коммитов (43 коммита)
+1. `bbf1a8c` Initial commit (LICENSE)
+2. `8b93b17` feat: initial project setup — Electron-based Chrome-like browser
+3. `311344c` fix: bump Electron 33→43.4.0, User-Agent Chrome 150
+4. `8422552` docs: Chrome settings map (96 настроек, gap analysis)
+5. `4a2866b` feat: extensions loader, PiP IPC, download/path APIs
+6. `c79d940` feat: download interception, notification permissions, lifecycle cleanup
+7. `a203dc7` fix: protocol handler через fs.readFileSync
+8. `f726054` fix: меню приложения + вставка в omnibox
+9. `7f68124` fix: контекстное меню (вырезать/копировать/вставить)
+10. `ecc6b70` refactor: запрет тернарников/?. /??/!! — везде if/else
+11. `1385b91` feat: загрузки, ⋮-меню, темы, контекстные меню страниц, Ctrl+W
+12. `da5c034` feat: полная русификация UI
+13. `b1086ba` fix: ⋮-меню нативное (HTML-меню пряталось под WebContentsView)
+14. `93ca43a` feat: история (browser://history, Ctrl+H)
+15. `aca6ae2` feat: закладки (Ctrl+D, панель, Ctrl+Shift+O)
+16. `ccf364e` feat: приватность (разрешения сайтов, DNT, блокировка попапов)
+17. `cbc3179` feat: внешний вид (масштаб, шрифт, кнопка «Домой»)
+18. `958a984` fix: omnibox показывает browser:// на внутренних страницах
+19. `c4363ba` fix: перетаскивание окна за пустую полосу вкладок
+20. `e297a0e` feat: звезда-закладка, контекстное меню панели, «Спрашивать» с очередью
+21. `f0272d9` fix: Ctrl/средний клик по закладке — новая вкладка, средний клик по вкладке — закрытие
+22. `72a4c59` feat: языки (орфография, перевод страницы, автоперевод)
+23. `548b7e7` feat: выбор поисковика (Google/Яндекс/Bing/DuckDuckGo)
+24. `2f7946c` feat: менеджер паролей (safeStorage, basic-auth диалог)
+25. `4cd2613` feat: о браузере (версии, проверка обновлений GitHub)
+26. `6722e68` feat: система (аппаратное ускорение, прокси)
+27. `3773080` feat: полная поддержка расширений (i18n, реестр, вкл/выкл/удалить, попапы), HTTP2/SSL fallback
+28. `8015a34` feat: настройки — сайдбар по разделам, ссылки на все страницы, сброс
+29. `9d743be` feat: PiP извлечение видео + electron-builder NSIS
+30. `744a2fd` fix: расширения — мультизагрузка, всегда видимая кнопка
+31. `fca17ef` feat: установка из Chrome Web Store / Edge / Opera / .crx
+32. `74cf804` feat: конвертер Firefox XPI (browser.* полифилл)
+33. `cd7119e` fix: кнопка «Удалить» всегда видна + удаление папки
+34. `c97581e` feat: compat-слой расширений (новый load API, MV3→MV2, фильтр разрешений, стабы)
+35. `786378b` fix: host_permissions → permissions при даунгрейде
+36. `b234d10` fix: попап через chrome-extension:// URL
+37. `36af668` feat: автоподгон размера попапа
+38. `315cde0` fix: enablePreferredSizeMode + sandbox + shim в HTML (по исследованию web)
+39. `783687a` feat: перетаскивание попапа (драг-полоса)
+40. `55ea003` chore: заглушены шумные warnings
+41. `060a2a4` feat: баннер установки на страницах Chrome Web Store
+42. `db1e886` feat: восстановление сессии («продолжить с того места»)
+43. `a8c62ac` fix: ESM require() → import adm-zip (установка из магазина чинилась)
+
+### Итоговое состояние
+- **Основа**: Electron 43.4.0 (Chromium 150), UA Chrome 140/150, окно frameless с drag-зоной
+- **Навигация**: Omnibox (4 поисковика), вкладки WebContentsView, внутренний протокол browser:// (9 страниц)
+- **Данные**: история, закладки (+панель), загрузки, пароли (safeStorage), сессия
+- **Настройки**: сайдбар, 10 разделов, ~45 из 96 настроек Chrome
+- **Расширения**: Chrome/Edge/Opera/CRX/XPI, реестр, попапы, тулбар, совместимость MV3→MV2
+- **Прочее**: PiP, уведомления + звук, DNT, прокси, аппаратное ускорение, русский UI
+- **Документация**: `API.md` (IPC контракт), `docs/chrome-settings-map.md`
+- **Упаковка**: `npm run dist` → NSIS-инсталлятор
+
+### Известные ограничения
+- chrome.identity (Web Token VK Next) — нет в Electron, стоит стаб
+- Сложные MV3 service workers работают не полностью
+- Firefox-специфичные API не имеют аналогов в Chromium
+- Тернарники/?. /??/!! запрещены код-стилем (правило пользователя)
+
 ## 2026-08-12 — v0.4.8 — Session Restore (Продолжить с того места)
 
 ### Bug
