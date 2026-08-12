@@ -77,6 +77,7 @@ export class TabManager {
         view.webContents.on('did-stop-loading', () => {
             tab.isLoading = false;
             this._notifyUpdate();
+            this._maybeAutoTranslate(tab);
         });
 
         view.webContents.on('did-navigate', (_event, navUrl) => {
@@ -125,6 +126,37 @@ export class TabManager {
         }
 
         return id;
+    }
+
+    _maybeAutoTranslate(tab) {
+        if (!this.settingsStore) {
+            return;
+        }
+        const autoTranslate = this.settingsStore.get('language.autoTranslate', false);
+        if (!autoTranslate) {
+            return;
+        }
+        if (tab.url.startsWith('browser://')) {
+            return;
+        }
+        if (tab.url.includes('translate.google.com')) {
+            return;
+        }
+        tab.view.webContents.executeJavaScript("(document.documentElement.getAttribute('lang') || '')")
+            .then((lang) => {
+                if (!lang) {
+                    return;
+                }
+                if (lang.toLowerCase().startsWith('ru')) {
+                    return;
+                }
+                if (!tab.isSelected) {
+                    return;
+                }
+                const translateUrl = 'https://translate.google.com/translate?sl=auto&tl=ru&u=' + encodeURIComponent(tab.url);
+                tab.view.webContents.loadURL(translateUrl, { userAgent: this._getUserAgent() });
+            })
+            .catch(() => {});
     }
 
     _handleWindowOpen(details) {

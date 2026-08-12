@@ -1,5 +1,14 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.3.0 — Languages (Языки)
+
+### Completed
+- [x] Проверка орфографии: вкл/выкл + выбор языка (setSpellCheckerLanguages)
+- [x] Настройки: language.spellcheck, language.spellcheckLanguages
+- [x] «Перевести страницу» в ⋮ меню → translate.google.com с URL активной вкладки
+- [x] Автоперевод: did-stop-loading → проверка lang атрибута → редирект на перевод (не для browser://, не для translate.google.com)
+- [x] Настройки: секция «Языки» (орфография, язык, автоперевод)
+
 ## 2026-08-12 — v0.2.5 — Bookmark Navigation Fixes
 
 ### Investigation

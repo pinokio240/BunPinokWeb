@@ -129,6 +129,12 @@ function setupIpcHandlers() {
         if (key === 'appearance.fontSize') {
             tabManager.setDefaultFontSize(value);
         }
+        if (key === 'language.spellcheck') {
+            applySpellcheckSettings();
+        }
+        if (key === 'language.spellcheckLanguages') {
+            applySpellcheckSettings();
+        }
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('settings:changed', settingsStore.getAll());
         }
@@ -402,6 +408,7 @@ function setupIpcHandlers() {
             { label: 'История', accelerator: 'Ctrl+H', click: () => { tabManager.createTab('browser://history'); updateChromeViewBounds(); } },
             { label: 'Закладки', accelerator: 'Ctrl+Shift+O', click: () => { tabManager.createTab('browser://bookmarks'); updateChromeViewBounds(); } },
             { label: 'Добавить в закладки', accelerator: 'Ctrl+D', click: () => { const t = tabManager.getActiveTab(); if (t) { bookmarkStore.add(t.url, t.title); mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll()); } } },
+            { label: 'Перевести страницу', click: () => { translateActiveTab(); } },
             { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
             { label: 'Приватность', click: () => { tabManager.createTab('browser://privacy'); updateChromeViewBounds(); } },
             { label: 'Расширения', click: () => { tabManager.createTab('browser://extensions'); updateChromeViewBounds(); } },
@@ -504,6 +511,11 @@ function setupIpcHandlers() {
         updateChromeViewBounds();
         return { success: true };
     });
+
+    ipcMain.handle('page:translate', () => {
+        translateActiveTab();
+        return { success: true };
+    });
 }
 
 function applyTheme(theme) {
@@ -517,6 +529,33 @@ function applyTheme(theme) {
     if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('appearance:theme-changed', theme);
     }
+}
+
+function applySpellcheckSettings() {
+    const enabled = settingsStore.get('language.spellcheck', true);
+    if (!enabled) {
+        session.defaultSession.setSpellCheckerLanguages([]);
+        return;
+    }
+    const langsSetting = settingsStore.get('language.spellcheckLanguages', 'ru,en');
+    const langs = String(langsSetting).split(',').map((item) => {
+        return item.trim();
+    }).filter((item) => {
+        return item.length > 0;
+    });
+    session.defaultSession.setSpellCheckerLanguages(langs);
+}
+
+function translateActiveTab() {
+    const tab = tabManager.getActiveTab();
+    if (!tab) {
+        return;
+    }
+    if (tab.url.startsWith('browser://')) {
+        return;
+    }
+    const translateUrl = 'https://translate.google.com/translate?sl=auto&tl=ru&u=' + encodeURIComponent(tab.url);
+    tabManager.navigateTab(tab.id, translateUrl);
 }
 
 function updateChromeViewBounds() {
@@ -636,6 +675,7 @@ app.whenReady().then(async () => {
     updateChromeViewBounds();
 
     applyTheme(settingsStore.get('appearance.theme', 'system'));
+    applySpellcheckSettings();
 
     const startupUrl = settingsStore.get('onStartup.url', 'browser://newtab');
     const parsed = OmniboxParser.parse(startupUrl);

@@ -23,7 +23,10 @@ const DEFAULT_SETTINGS = {
     'privacy.camera': 'allow',
     'privacy.microphone': 'allow',
     'privacy.popups': 'block',
-    'privacy.dnt': false
+    'privacy.dnt': false,
+    'language.spellcheck': true,
+    'language.spellcheckLanguages': 'ru,en',
+    'language.autoTranslate': false
 };
 
 export class SettingsStore {

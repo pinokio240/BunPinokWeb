@@ -189,6 +189,40 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
   </div>
 
   <div class="section">
+    <div class="section-title">Языки</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Проверка орфографии</div>
+        <div class="desc">Подчёркивать опечатки при вводе текста</div>
+      </div>
+      <select id="setting-spellcheck">
+        <option value="true">Вкл.</option>
+        <option value="false">Выкл.</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Язык проверки орфографии</div>
+      </div>
+      <select id="setting-spelllangs">
+        <option value="ru">Русский</option>
+        <option value="ru,en">Русский + Английский</option>
+        <option value="en">Английский</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Автоперевод страниц</div>
+        <div class="desc">Автоматически переводить страницы не на русском языке</div>
+      </div>
+      <select id="setting-autotranslate">
+        <option value="false">Выкл.</option>
+        <option value="true">Вкл.</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
     <div class="section-title">Расширения</div>
     <div class="row">
       <div class="row-label">
@@ -251,6 +285,18 @@ async function loadSettings() {
   }
   document.getElementById('setting-homepage').value = homePage;
 
+  let spellcheck = all['language.spellcheck'] !== false;
+  setSelect('setting-spellcheck', String(spellcheck));
+
+  let spellLangs = 'ru,en';
+  if (all['language.spellcheckLanguages']) {
+    spellLangs = all['language.spellcheckLanguages'];
+  }
+  setSelect('setting-spelllangs', spellLangs);
+
+  let autoTranslate = all['language.autoTranslate'] === true;
+  setSelect('setting-autotranslate', String(autoTranslate));
+
   let dlPath = 'По умолчанию';
   if (all['downloads.path']) {
     dlPath = all['downloads.path'];
@@ -310,6 +356,21 @@ document.getElementById('setting-homepage').addEventListener('change', async (e)
     value = 'browser://newtab';
   }
   await window.browserAPI.settings.set('appearance.homePage', value);
+  showToast('Сохранено');
+});
+
+document.getElementById('setting-spellcheck').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('language.spellcheck', e.target.value === 'true');
+  showToast('Сохранено');
+});
+
+document.getElementById('setting-spelllangs').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('language.spellcheckLanguages', e.target.value);
+  showToast('Сохранено');
+});
+
+document.getElementById('setting-autotranslate').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('language.autoTranslate', e.target.value === 'true');
   showToast('Сохранено');
 });
 
