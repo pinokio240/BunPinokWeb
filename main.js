@@ -18,6 +18,7 @@ import { PermissionDialogManager } from './src/permission-dialog.js';
 import { PasswordStore } from './src/password-store.js';
 import { AuthDialogManager } from './src/auth-dialog.js';
 import { CrxInstaller } from './src/crx-installer.js';
+import { XpiConverter } from './src/xpi-converter.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -33,6 +34,7 @@ let permissionDialogManager = null;
 let passwordStore = null;
 let authDialogManager = null;
 let crxInstaller = null;
+let xpiConverter = null;
 let bookmarksBarVisible = false;
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
@@ -438,14 +440,24 @@ function setupIpcHandlers() {
             properties: ['openFile'],
             title: 'Выберите файл расширения',
             filters: [
-                { name: 'Расширения Chromium', extensions: ['crx', 'nex', 'zip'] }
+                { name: 'Расширения (Chrome/Edge/Opera/Firefox)', extensions: ['crx', 'nex', 'zip', 'xpi'] }
             ]
         });
         if (result.canceled || result.filePaths.length === 0) {
             return { success: false, error: 'Файл не выбран' };
         }
         try {
-            const installed = await crxInstaller.installFromFile(result.filePaths[0]);
+            const filePath = result.filePaths[0];
+            const lowerPath = filePath.toLowerCase();
+            let installed = null;
+            if (lowerPath.endsWith('.xpi')) {
+                const targetDir = path.join(app.getPath('userData'), 'extensions', 'installed', 'xpi-' + Date.now());
+                xpiConverter.convert(filePath, targetDir);
+                const extId = await extensionManager.loadExtension(targetDir);
+                installed = { id: extId };
+            } else {
+                installed = await crxInstaller.installFromFile(filePath);
+            }
             mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
             return { success: true, id: installed.id };
         } catch (err) {
@@ -833,6 +845,7 @@ app.whenReady().then(async () => {
     tabManager.setSettingsStore(settingsStore);
     extensionManager = new ExtensionManager(tabManager);
     crxInstaller = new CrxInstaller(extensionManager);
+    xpiConverter = new XpiConverter();
 
     const menuTemplate = [
         {

@@ -1,5 +1,19 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.4.5 — Firefox XPI Converter
+
+### Completed
+- [x] src/xpi-converter.js: конвертер Firefox XPI → Chromium
+- [x] Манифест: удаление browser_specific_settings/applications/sidebar_action, маппинг menus→contextMenus, фильтр неподдерживаемых разрешений, даунгрейд MV3→MV2 при background.scripts
+- [x] Полифилл browser-polyfill.js: runtime/storage/tabs/windows/notifications/i18n/commands/bookmarks/history/action/contextMenus/webRequest/cookies + events (promise-обёртки)
+- [x] Инжекция: background.scripts, content_scripts, MV3 service_worker (importScripts-обёртка), все HTML (popup/options)
+- [x] Установка из файла: автоопределение .xpi → конвертация, .crx/.nex/.zip → CRX
+- [x] UI: фильтр .xpi в диалоге, пояснение на странице
+
+### Ограничения (честно)
+- Firefox-специфичные API (browser.tabs.hide, sidebarAction и др.) не имеют аналогов в Chromium
+- WebExtensions API покрыт частично (~80% самых частых вызовов)
+
 ## 2026-08-12 — v0.4.4 — Store Installation for Extensions
 
 ### Research
