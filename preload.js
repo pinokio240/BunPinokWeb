@@ -57,7 +57,8 @@ contextBridge.exposeInMainWorld('browserAPI', {
     ui: {
         onFocusOmnibox: (callback) => {
             ipcRenderer.on('ui:focus-omnibox', () => callback());
-        }
+        },
+        showAppMenu: (x, y) => ipcRenderer.invoke('ui:showAppMenu', x, y)
     },
 
     pip: {

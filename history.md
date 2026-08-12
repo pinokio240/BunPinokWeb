@@ -1,5 +1,15 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.1.6 — Native App Menu (fix: dropdown hidden under page)
+
+### Bug
+HTML ⋮ dropdown rendered under the WebContentsView (native layer composites above the chrome UI HTML).
+
+### Fix
+- Replaced HTML dropdown with native `Menu.popup()` (OS-level menu always renders on top)
+- IPC: `ui:showAppMenu(x, y)` — main builds menu, pops at button coordinates
+- Removed dropdown HTML/CSS/JS from browser-chrome.html
+
 ## 2026-08-12 — v0.1.5 — Full Russian Localization
 
 ### Completed

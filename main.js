@@ -371,6 +371,29 @@ function setupIpcHandlers() {
             tab.view.webContents.setZoomLevel(0);
         }
     });
+
+    ipcMain.handle('ui:showAppMenu', (_event, x, y) => {
+        const template = [
+            { label: 'Новая вкладка', accelerator: 'Ctrl+T', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } },
+            { label: 'Загрузки', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
+            { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
+            { label: 'Расширения', click: () => { tabManager.createTab('browser://extensions'); updateChromeViewBounds(); } },
+            { type: 'separator' },
+            { label: 'Увеличить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(t.view.webContents.getZoomLevel() + 0.5); } } },
+            { label: 'Уменьшить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(t.view.webContents.getZoomLevel() - 0.5); } } },
+            { label: 'Сбросить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(0); } } },
+            { type: 'separator' },
+            { label: 'Во весь экран', click: () => { if (mainWindow) { mainWindow.setFullScreen(!mainWindow.isFullScreen()); } } },
+            { type: 'separator' },
+            { label: 'Выход', click: () => { app.quit(); } }
+        ];
+        const menu = Menu.buildFromTemplate(template);
+        menu.popup({
+            window: mainWindow,
+            x: Math.round(x),
+            y: Math.round(y)
+        });
+    });
 }
 
 function applyTheme(theme) {
