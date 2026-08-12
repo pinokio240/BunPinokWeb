@@ -406,6 +406,19 @@ app.whenReady().then(async () => {
         })));
     });
 
+    mainWindow.webContents.on('context-menu', (_event, params) => {
+        const { editFlags } = params;
+        const contextMenuTemplate = [
+            { label: 'Cut', role: 'cut', enabled: editFlags.canCut },
+            { label: 'Copy', role: 'copy', enabled: editFlags.canCopy },
+            { label: 'Paste', role: 'paste', enabled: editFlags.canPaste },
+            { type: 'separator' },
+            { label: 'Select All', role: 'selectAll', enabled: editFlags.canSelectAll }
+        ];
+        const menu = Menu.buildFromTemplate(contextMenuTemplate);
+        menu.popup({ window: mainWindow });
+    });
+
     session.defaultSession.on('will-download', async (_event, item) => {
         const askBeforeSave = settingsStore.get('downloads.askBeforeSave', true);
         const defaultPath = settingsStore.get('downloads.path', app.getPath('downloads'));
