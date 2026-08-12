@@ -145,6 +145,33 @@ export function prepareExtensionForElectron(extPath) {
         changed = true;
     }
 
+    if (manifest.manifest_version === 2) {
+        if (Array.isArray(manifest.host_permissions)) {
+            if (!Array.isArray(manifest.permissions)) {
+                manifest.permissions = [];
+            }
+            for (const hostPermission of manifest.host_permissions) {
+                if (!manifest.permissions.includes(hostPermission)) {
+                    manifest.permissions.push(hostPermission);
+                }
+            }
+            delete manifest.host_permissions;
+            changed = true;
+        }
+        if (Array.isArray(manifest.optional_host_permissions)) {
+            if (!Array.isArray(manifest.optional_permissions)) {
+                manifest.optional_permissions = [];
+            }
+            for (const hostPermission of manifest.optional_host_permissions) {
+                if (!manifest.optional_permissions.includes(hostPermission)) {
+                    manifest.optional_permissions.push(hostPermission);
+                }
+            }
+            delete manifest.optional_host_permissions;
+            changed = true;
+        }
+    }
+
     if (manifest.manifest_version === 2 && manifest.action && !manifest.browser_action) {
         manifest.browser_action = manifest.action;
         delete manifest.action;
