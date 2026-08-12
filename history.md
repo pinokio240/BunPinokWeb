@@ -1,5 +1,28 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.4.6 — Extension Compatibility Layer
+
+### Problems found (user log)
+1. `session.loadExtension` deprecated → новый API `session.extensions.loadExtension`
+2. `Permission 'commands' is unknown` → chrome.commands отсутствует → падение расширения
+3. MV3 service worker не регистрируется в Electron
+4. `Permission 'notifications' is unknown` — предупреждение, API работает
+5. VK Next: chrome.identity не поддерживается (Web Token failed)
+
+### Fixes
+- [x] src/extension-compat.js: prepareExtensionForElectron
+- [x] Фильтр неподдерживаемых разрешений из manifest (commands, identity, sidePanel, offscreen...)
+- [x] MV3 service_worker → MV2 event page (background.scripts + persistent:false)
+- [x] action → browser_action при даунгрейде
+- [x] electron-compat.js шим: chrome.commands/identity/sidePanel/action/storage заглушки
+- [x] Инжекция шима в background.scripts и content_scripts
+- [x] Новый API: session.defaultSession.extensions.loadExtension
+- [x] Попапы: поддержка и action.default_popup, и browser_action.default_popup
+
+### Осталось ограничением (честно)
+- chrome.identity (Web Token VK Next) — в Electron нет, зашит стаб с ошибкой
+- Сложные MV3 service workers могут работать не полностью
+
 ## 2026-08-12 — v0.4.5 — Firefox XPI Converter
 
 ### Completed

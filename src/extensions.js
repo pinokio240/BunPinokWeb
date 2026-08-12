@@ -1,6 +1,7 @@
-import { app, session } from 'electron';
+﻿import { app, session } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import { prepareExtensionForElectron } from './extension-compat.js';
 
 function resolveLocalizedString(value, manifest, extPath) {
     let result = value;
@@ -36,6 +37,8 @@ function getIconDataUrl(manifest, extPath) {
     let icons = null;
     if (manifest.action && manifest.action.default_icon) {
         icons = manifest.action.default_icon;
+    } else if (manifest.browser_action && manifest.browser_action.default_icon) {
+        icons = manifest.browser_action.default_icon;
     } else if (manifest.icons) {
         icons = manifest.icons;
     }
@@ -140,8 +143,9 @@ export class ExtensionManager {
         if (!fs.existsSync(manifestPath)) {
             throw new Error('Нет manifest.json в ' + extPath);
         }
+        prepareExtensionForElectron(extPath);
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-        const ext = await session.defaultSession.loadExtension(extPath, {
+        const ext = await session.defaultSession.extensions.loadExtension(extPath, {
             allowFileAccess: true
         });
 
@@ -151,6 +155,8 @@ export class ExtensionManager {
         let popup = '';
         if (manifest.action && manifest.action.default_popup) {
             popup = path.join(extPath, manifest.action.default_popup);
+        } else if (manifest.browser_action && manifest.browser_action.default_popup) {
+            popup = path.join(extPath, manifest.browser_action.default_popup);
         }
 
         const entry = {
@@ -207,9 +213,10 @@ export class ExtensionManager {
         if (!fs.existsSync(manifestPath)) {
             throw new Error('Нет manifest.json в выбранной папке');
         }
+        prepareExtensionForElectron(extPath);
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 
-        const ext = await session.defaultSession.loadExtension(extPath, {
+        const ext = await session.defaultSession.extensions.loadExtension(extPath, {
             allowFileAccess: true
         });
 
@@ -219,6 +226,8 @@ export class ExtensionManager {
         let popup = '';
         if (manifest.action && manifest.action.default_popup) {
             popup = path.join(extPath, manifest.action.default_popup);
+        } else if (manifest.browser_action && manifest.browser_action.default_popup) {
+            popup = path.join(extPath, manifest.browser_action.default_popup);
         }
 
         const entry = {
