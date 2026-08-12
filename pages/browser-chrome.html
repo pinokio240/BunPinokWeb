@@ -400,6 +400,8 @@ async function updateOmnibox(url) {
   if (url.startsWith('browser://')) {
     if (url === 'browser://newtab') {
       $('#omnibox').value = '';
+    } else {
+      $('#omnibox').value = url;
     }
     return;
   }
