@@ -3,6 +3,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 
+process.on('warning', (warning) => {
+    const message = warning && warning.message ? String(warning.message) : '';
+    if (message.includes('Manifest version 2 is deprecated')) {
+        return;
+    }
+    if (message.includes('Warnings loading extension')) {
+        return;
+    }
+    console.warn(warning);
+});
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 import { OmniboxParser } from './src/omnibox.js';
