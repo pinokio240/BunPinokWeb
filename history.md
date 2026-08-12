@@ -90,7 +90,20 @@ main.js          — Main process: window management, protocol handler, IPC
 | About | 2 | 0 |
 | **Total** | **96** | **6 (6%)** |
 
+## 2026-08-12 — v0.1.2 — Extensions, PiP, Notifications, Downloads
+
+### Completed
+- [x] Extensions: loadUnpacked via system dialog, unload, IPC getAll
+- [x] Extensions page: developer mode toggle, load/remove UI
+- [x] PiP: IPC-based close, transparent always-on-top window, lifecycle cleanup
+- [x] Notifications: IPC `notifications:show`, web notification permission auto-grant
+- [x] Downloads: `will-download` interception, save dialog, path from settings
+- [x] TabManager: `destroy()` method, polling reduced to 5s
+- [x] `app.on('before-quit')` cleanup: PiP close + tabManager destroy
+- [x] `session.setPermissionRequestHandler`: auto-grant notifications/media/geolocation
+- [x] preload: exposed extensions, notifications, storage IPC
+
 ### Known Issues
-- PiP currently creates empty window (video extraction TBD)
+- PiP video element not linked to source tab's video (needs media stream extraction)
 - Sound playback on Windows uses PowerShell Media.SoundPlayer (may not work on all systems)
-- Extensions page needs `showOpenDialog` for directory selection
+- No Chrome Web Store integration for extensions (unpacked-only)

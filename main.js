@@ -337,6 +337,43 @@ app.whenReady().then(async () => {
             isLoading: t.isLoading
         })));
     });
+
+    session.defaultSession.on('will-download', async (_event, item) => {
+        const askBeforeSave = settingsStore.get('downloads.askBeforeSave', true);
+        const defaultPath = settingsStore.get('downloads.path', app.getPath('downloads'));
+        const suggestedPath = path.join(defaultPath, item.getFilename());
+
+        if (!askBeforeSave) {
+            item.setSavePath(suggestedPath);
+            return;
+        }
+
+        const result = await dialog.showSaveDialog(mainWindow, {
+            title: 'Save file',
+            defaultPath: suggestedPath,
+            buttonLabel: 'Save'
+        });
+
+        if (result.canceled) {
+            item.cancel();
+        } else {
+            item.setSavePath(result.filePath);
+        }
+    });
+
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+        const allowedPermissions = ['notifications', 'media', 'geolocation'];
+        if (allowedPermissions.includes(permission)) {
+            callback(true);
+        } else {
+            callback(false);
+        }
+    });
+});
+
+app.on('before-quit', () => {
+    pipManager.closeAll();
+    if (tabManager) tabManager.destroy();
 });
 
 app.on('window-all-closed', () => {
