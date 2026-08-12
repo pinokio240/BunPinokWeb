@@ -177,6 +177,24 @@ input, button { user-select: auto; }
   background: #fff; z-index: 1;
 }
 
+#bookmarks-bar {
+  position: fixed; top: 82px; left: 0; right: 0; height: 30px;
+  background: var(--chrome-toolbar); border-bottom: 1px solid var(--chrome-border);
+  display: none; align-items: center; padding: 0 8px; z-index: 99;
+  overflow-x: auto; overflow-y: hidden; gap: 2px;
+}
+#bookmarks-bar.visible { display: flex; }
+#bookmarks-bar::-webkit-scrollbar { height: 0; }
+.bm-item {
+  display: flex; align-items: center; gap: 6px; height: 24px;
+  padding: 0 10px; border-radius: 12px; cursor: pointer;
+  font-size: 12px; color: var(--chrome-tab-active-text); white-space: nowrap;
+  flex-shrink: 0;
+}
+.bm-item:hover { background: var(--chrome-control-hover); }
+.bm-item .bm-star { font-size: 12px; }
+.bm-empty { font-size: 12px; color: var(--chrome-tab-text); padding: 0 8px; }
+
 #status-bar {
   position: fixed; bottom: 0; left: 0; right: 0; height: 22px;
   background: #f2f2f2; border-top: 1px solid var(--chrome-border);
@@ -215,6 +233,8 @@ input, button { user-select: auto; }
   <button id="menu-btn" title="Меню">⋮</button>
 </div>
 
+<div id="bookmarks-bar"></div>
+
 <div id="content-area"></div>
 
 <div id="status-bar">
@@ -234,6 +254,55 @@ async function init() {
   setupEventListeners();
   browserAPI.tabs.onUpdated(() => refreshTabs());
   setInterval(refreshTabs, 3000);
+  initBookmarksBar();
+}
+
+async function initBookmarksBar() {
+  browserAPI.bookmarks.onUpdated(() => renderBookmarksBar());
+  browserAPI.settings.onChanged((allSettings) => {
+    const showBar = allSettings['appearance.showBookmarksBar'] === true;
+    if (showBar) {
+      $('#bookmarks-bar').classList.add('visible');
+    } else {
+      $('#bookmarks-bar').classList.remove('visible');
+    }
+    browserAPI.bookmarks.setBarVisible(showBar);
+  });
+  renderBookmarksBar();
+  const allSettings = await browserAPI.settings.getAll();
+  const showBar = allSettings['appearance.showBookmarksBar'] === true;
+  if (showBar) {
+    $('#bookmarks-bar').classList.add('visible');
+  } else {
+    $('#bookmarks-bar').classList.remove('visible');
+  }
+  browserAPI.bookmarks.setBarVisible(showBar);
+}
+
+async function renderBookmarksBar() {
+  const bar = $('#bookmarks-bar');
+  const bookmarks = await browserAPI.bookmarks.getAll();
+  if (!bookmarks || bookmarks.length === 0) {
+    bar.innerHTML = '<span class="bm-empty">Панель закладок пуста — нажмите Ctrl+D, чтобы добавить страницу</span>';
+    return;
+  }
+  let html = '';
+  for (const bookmark of bookmarks.slice(0, 20)) {
+    html += `
+      <div class="bm-item" data-url="${escapeHtml(bookmark.url)}">
+        <span class="bm-star">⭐</span>
+        <span>${escapeHtml(bookmark.title)}</span>
+      </div>
+    `;
+  }
+  bar.innerHTML = html;
+  bar.querySelectorAll('.bm-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      if (activeTabId) {
+        browserAPI.tabs.navigate(activeTabId, item.dataset.url);
+      }
+    });
+  });
 }
 
 async function refreshTabs() {

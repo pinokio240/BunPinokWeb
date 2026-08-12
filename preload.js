@@ -5,7 +5,10 @@ contextBridge.exposeInMainWorld('browserAPI', {
         get: (key) => ipcRenderer.invoke('settings:get', key),
         set: (key, value) => ipcRenderer.invoke('settings:set', key, value),
         getAll: () => ipcRenderer.invoke('settings:getAll'),
-        clearBrowsingData: (types) => ipcRenderer.invoke('settings:clear-browsing-data', types)
+        clearBrowsingData: (types) => ipcRenderer.invoke('settings:clear-browsing-data', types),
+        onChanged: (callback) => {
+            ipcRenderer.on('settings:changed', (_event, all) => callback(all));
+        }
     },
 
     tabs: {
@@ -52,6 +55,17 @@ contextBridge.exposeInMainWorld('browserAPI', {
         search: (query) => ipcRenderer.invoke('history:search', query),
         clear: () => ipcRenderer.invoke('history:clear'),
         removeByTimestamp: (timestamp) => ipcRenderer.invoke('history:removeByTimestamp', timestamp)
+    },
+
+    bookmarks: {
+        getAll: () => ipcRenderer.invoke('bookmarks:getAll'),
+        add: (url, title) => ipcRenderer.invoke('bookmarks:add', url, title),
+        remove: (url) => ipcRenderer.invoke('bookmarks:remove', url),
+        toggleCurrent: () => ipcRenderer.invoke('bookmarks:toggleCurrent'),
+        onUpdated: (callback) => {
+            ipcRenderer.on('bookmarks:updated', (_event, bookmarks) => callback(bookmarks));
+        },
+        setBarVisible: (visible) => ipcRenderer.invoke('ui:setBookmarksBarVisible', visible)
     },
 
     appearance: {

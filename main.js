@@ -13,6 +13,7 @@ import { NotificationManager } from './src/notifications.js';
 import { PipManager } from './src/pip.js';
 import { DownloadManager } from './src/downloads.js';
 import { HistoryStore } from './src/history-store.js';
+import { BookmarkStore } from './src/bookmark-store.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -23,6 +24,8 @@ let notificationManager = null;
 let pipManager = null;
 let downloadManager = null;
 let historyStore = null;
+let bookmarkStore = null;
+let bookmarksBarVisible = false;
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
 
@@ -65,7 +68,8 @@ function setupProtocolHandler() {
             'settings': 'pages/settings.html',
             'extensions': 'pages/extensions.html',
             'downloads': 'pages/downloads.html',
-            'history': 'pages/history.html'
+            'history': 'pages/history.html',
+            'bookmarks': 'pages/bookmarks.html'
         };
 
         const filePath = pageMap[pageName];
@@ -111,6 +115,13 @@ function setupIpcHandlers() {
         settingsStore.set(key, value);
         if (key === 'appearance.theme') {
             applyTheme(value);
+        }
+        if (key === 'appearance.showBookmarksBar') {
+            bookmarksBarVisible = value === true;
+            updateChromeViewBounds();
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('settings:changed', settingsStore.getAll());
         }
         return { success: true };
     });
@@ -380,6 +391,7 @@ function setupIpcHandlers() {
             { label: 'Новая вкладка', accelerator: 'Ctrl+T', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } },
             { label: 'Загрузки', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
             { label: 'История', accelerator: 'Ctrl+H', click: () => { tabManager.createTab('browser://history'); updateChromeViewBounds(); } },
+            { label: 'Закладки', accelerator: 'Ctrl+Shift+O', click: () => { tabManager.createTab('browser://bookmarks'); updateChromeViewBounds(); } },
             { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
             { label: 'Расширения', click: () => { tabManager.createTab('browser://extensions'); updateChromeViewBounds(); } },
             { type: 'separator' },
@@ -416,6 +428,43 @@ function setupIpcHandlers() {
         historyStore.removeByTimestamp(timestamp);
         return { success: true };
     });
+
+    ipcMain.handle('bookmarks:getAll', () => {
+        return bookmarkStore.getAll();
+    });
+
+    ipcMain.handle('bookmarks:add', (_event, url, title) => {
+        bookmarkStore.add(url, title);
+        mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll());
+        return { success: true };
+    });
+
+    ipcMain.handle('bookmarks:remove', (_event, url) => {
+        bookmarkStore.removeByUrl(url);
+        mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll());
+        return { success: true };
+    });
+
+    ipcMain.handle('bookmarks:toggleCurrent', () => {
+        const tab = tabManager.getActiveTab();
+        if (!tab) {
+            return { added: false };
+        }
+        if (bookmarkStore.has(tab.url)) {
+            bookmarkStore.removeByUrl(tab.url);
+            mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll());
+            return { added: false };
+        }
+        bookmarkStore.add(tab.url, tab.title);
+        mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll());
+        return { added: true };
+    });
+
+    ipcMain.handle('ui:setBookmarksBarVisible', (_event, visible) => {
+        bookmarksBarVisible = visible;
+        updateChromeViewBounds();
+        return { success: true };
+    });
 }
 
 function applyTheme(theme) {
@@ -434,7 +483,10 @@ function applyTheme(theme) {
 function updateChromeViewBounds() {
     if (!mainWindow || !chromeView) return;
     const contentBounds = mainWindow.contentView.getBounds();
-    const topBarHeight = 82;
+    let topBarHeight = 82;
+    if (bookmarksBarVisible) {
+        topBarHeight = topBarHeight + 30;
+    }
     chromeView.setBounds({
         x: 0,
         y: topBarHeight,
@@ -455,6 +507,8 @@ app.whenReady().then(async () => {
     pipManager = new PipManager();
     downloadManager = new DownloadManager(settingsStore, () => mainWindow);
     historyStore = new HistoryStore();
+    bookmarkStore = new BookmarkStore();
+    bookmarksBarVisible = settingsStore.get('appearance.showBookmarksBar', false);
 
     setupProtocolHandler();
 
@@ -486,6 +540,9 @@ app.whenReady().then(async () => {
                 { type: 'separator' },
                 { label: 'Загрузки', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
                 { label: 'История', accelerator: 'Ctrl+H', click: () => { tabManager.createTab('browser://history'); updateChromeViewBounds(); } },
+                { label: 'Закладки', accelerator: 'Ctrl+Shift+O', click: () => { tabManager.createTab('browser://bookmarks'); updateChromeViewBounds(); } },
+                { label: 'Добавить страницу в закладки', accelerator: 'Ctrl+D', click: () => { const t = tabManager.getActiveTab(); if (t) { bookmarkStore.add(t.url, t.title); mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll()); } } },
+                { type: 'separator' },
                 { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
                 { type: 'separator' },
                 { role: 'quit', label: 'Выход' }

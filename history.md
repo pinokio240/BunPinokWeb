@@ -1,5 +1,18 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.2.1 — Bookmarks (Закладки)
+
+### Completed
+- [x] `src/bookmark-store.js`: BookmarkStore — JSON persistence, dedup, update title
+- [x] `pages/bookmarks.html`: список с поиском, добавлением текущей страницы, удалением
+- [x] `browser://bookmarks` в protocol map, Ctrl+Shift+O в меню
+- [x] Ctrl+D — добавить текущую вкладку в закладки (повторное нажатие удаляет)
+- [x] Панель закладок в chrome-UI (показывается/скрывается из настроек)
+- [x] `ui:setBookmarksBarVisible` IPC — контент-область сдвигается при показе панели
+- [x] `settings:changed` broadcast — панель перерисовывается без перезапуска
+- [x] IPC: bookmarks:getAll/add/remove/toggleCurrent
+- [x] preload: browserAPI.bookmarks
+
 ## 2026-08-12 — v0.2.0 — History (История)
 
 ### Completed
