@@ -12,6 +12,7 @@
   "author": "pinokio240",
   "license": "MIT",
   "dependencies": {
+    "adm-zip": "^0.5.16",
     "electron-store": "^10.0.0"
   },
   "devDependencies": {

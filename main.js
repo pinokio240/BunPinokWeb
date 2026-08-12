@@ -17,6 +17,7 @@ import { BookmarkStore } from './src/bookmark-store.js';
 import { PermissionDialogManager } from './src/permission-dialog.js';
 import { PasswordStore } from './src/password-store.js';
 import { AuthDialogManager } from './src/auth-dialog.js';
+import { CrxInstaller } from './src/crx-installer.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -31,6 +32,7 @@ let bookmarkStore = null;
 let permissionDialogManager = null;
 let passwordStore = null;
 let authDialogManager = null;
+let crxInstaller = null;
 let bookmarksBarVisible = false;
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
@@ -421,6 +423,36 @@ function setupIpcHandlers() {
         return { success: true };
     });
 
+    ipcMain.handle('extensions:installFromUrl', async (_event, url) => {
+        try {
+            const result = await crxInstaller.installFromUrl(url);
+            mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
+            return { success: true, id: result.id };
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    });
+
+    ipcMain.handle('extensions:installFromFile', async () => {
+        const result = await dialog.showOpenDialog(mainWindow, {
+            properties: ['openFile'],
+            title: 'Выберите файл расширения',
+            filters: [
+                { name: 'Расширения Chromium', extensions: ['crx', 'nex', 'zip'] }
+            ]
+        });
+        if (result.canceled || result.filePaths.length === 0) {
+            return { success: false, error: 'Файл не выбран' };
+        }
+        try {
+            const installed = await crxInstaller.installFromFile(result.filePaths[0]);
+            mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
+            return { success: true, id: installed.id };
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    });
+
     ipcMain.handle('notifications:show', (_event, title, body, options) => {
         notificationManager.show(title, body, options);
         return { success: true };
@@ -800,6 +832,7 @@ app.whenReady().then(async () => {
     tabManager.setHistoryStore(historyStore);
     tabManager.setSettingsStore(settingsStore);
     extensionManager = new ExtensionManager(tabManager);
+    crxInstaller = new CrxInstaller(extensionManager);
 
     const menuTemplate = [
         {

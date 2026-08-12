@@ -1,5 +1,20 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.4.4 — Store Installation for Extensions
+
+### Research
+- Chromium-based browsers (Chrome/Edge/Opera/Brave/Vivaldi) — совместимы с Electron напрямую (один движок, MV3, CRX)
+- Firefox (XPI/WebExtensions) и Safari — несовместимы без конвертера
+
+### Completed
+- [x] src/crx-installer.js: разбор CRX3/CRX2 (поиск ZIP-сигнатуры), извлечение adm-zip
+- [x] Chrome Web Store: установка по ссылке или ID (clients2.google.com API)
+- [x] Edge Add-ons: установка по ссылке (extensionwebstorebase API)
+- [x] Opera Addons: установка по ссылке (addons.opera.com download)
+- [x] Установка из файла .crx/.nex/.zip с ПК
+- [x] UI: поле для ссылки + кнопки «Установить из магазина» и «Установить из файла»
+- [x] dependency: adm-zip
+
 ## 2026-08-12 — v0.4.3 — Multiple Extensions Loading
 
 ### Fixes

@@ -72,6 +72,17 @@ h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
     <p>Загрузите распакованные расширения (можно выбрать несколько папок сразу)</p>
     <button class="btn primary" id="load-ext-btn">Загрузить распакованные</button>
   </div>
+
+  <div class="load-section">
+    <p>Установка из магазина: вставьте ссылку из Chrome Web Store, Edge Add-ons, Opera Addons или ID расширения</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+      <input type="text" id="store-url" placeholder="https://chromewebstore.google.com/detail/..." style="flex:1;min-width:220px;padding:9px 14px;border:1px solid var(--border);border-radius:20px;font-size:13px;outline:none">
+      <button class="btn primary" id="install-url-btn">Установить из магазина</button>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn" id="install-file-btn">Установить из файла (.crx / .nex)</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -205,6 +216,48 @@ document.getElementById('load-ext-btn').addEventListener('click', async () => {
     }
     if (result.errors && result.errors.length > 0) {
       errorMsg = errorMsg + ': ' + result.errors.join('; ');
+    }
+    showToast(errorMsg, 'error');
+  }
+});
+
+document.getElementById('install-url-btn').addEventListener('click', async () => {
+  const url = document.getElementById('store-url').value.trim();
+  if (!url) {
+    showToast('Вставьте ссылку на расширение', 'error');
+    return;
+  }
+  showToast('Скачивание расширения...');
+  const result = await window.browserAPI.extensions.installFromUrl(url);
+  if (result.success) {
+    showToast('Расширение установлено');
+    document.getElementById('store-url').value = '';
+    loadExtensions();
+  } else {
+    let errorMsg = 'Не удалось установить';
+    if (result.error) {
+      errorMsg = result.error;
+    }
+    showToast(errorMsg, 'error');
+  }
+});
+
+document.getElementById('store-url').addEventListener('keydown', async (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('install-url-btn').click();
+  }
+});
+
+document.getElementById('install-file-btn').addEventListener('click', async () => {
+  showToast('Выберите файл .crx...');
+  const result = await window.browserAPI.extensions.installFromFile();
+  if (result.success) {
+    showToast('Расширение установлено');
+    loadExtensions();
+  } else {
+    let errorMsg = 'Не удалось установить';
+    if (result.error) {
+      errorMsg = result.error;
     }
     showToast(errorMsg, 'error');
   }
