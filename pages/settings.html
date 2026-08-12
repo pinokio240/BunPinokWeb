@@ -239,6 +239,38 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
   </div>
 
   <div class="section">
+    <div class="section-title">Система</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Аппаратное ускорение</div>
+        <div class="desc">Использовать GPU для отрисовки (требуется перезапуск)</div>
+      </div>
+      <select id="setting-hwaccel">
+        <option value="true">Вкл.</option>
+        <option value="false">Выкл.</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Прокси-сервер</div>
+        <div class="desc">Режим прокси для соединений</div>
+      </div>
+      <select id="setting-proxymode">
+        <option value="system">Системный</option>
+        <option value="none">Без прокси</option>
+        <option value="manual">Вручную</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Адрес прокси</div>
+        <div class="desc">Например: http://127.0.0.1:8080 или socks5://host:port</div>
+      </div>
+      <input type="text" id="setting-proxyserver" placeholder="http://host:port" style="width:280px">
+    </div>
+  </div>
+
+  <div class="section">
     <div class="section-title">Расширения</div>
     <div class="row">
       <div class="row-label">
@@ -319,6 +351,21 @@ async function loadSettings() {
   }
   setSelect('setting-search', searchEngine);
 
+  let hwAccel = all['system.hardwareAcceleration'] !== false;
+  setSelect('setting-hwaccel', String(hwAccel));
+
+  let proxyMode = 'system';
+  if (all['system.proxyMode']) {
+    proxyMode = all['system.proxyMode'];
+  }
+  setSelect('setting-proxymode', proxyMode);
+
+  let proxyServer = '';
+  if (all['system.proxyServer']) {
+    proxyServer = all['system.proxyServer'];
+  }
+  document.getElementById('setting-proxyserver').value = proxyServer;
+
   let dlPath = 'По умолчанию';
   if (all['downloads.path']) {
     dlPath = all['downloads.path'];
@@ -398,6 +445,21 @@ document.getElementById('setting-autotranslate').addEventListener('change', asyn
 
 document.getElementById('setting-search').addEventListener('change', async (e) => {
   await window.browserAPI.settings.set('search.engine', e.target.value);
+  showToast('Сохранено');
+});
+
+document.getElementById('setting-hwaccel').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('system.hardwareAcceleration', e.target.value === 'true');
+  showToast('Сохранено — перезапустите браузер');
+});
+
+document.getElementById('setting-proxymode').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('system.proxyMode', e.target.value);
+  showToast('Сохранено');
+});
+
+document.getElementById('setting-proxyserver').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('system.proxyServer', e.target.value.trim());
   showToast('Сохранено');
 });
 

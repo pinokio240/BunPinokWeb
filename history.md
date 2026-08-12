@@ -1,5 +1,13 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.3.4 — System (Система)
+
+### Completed
+- [x] Аппаратное ускорение: вкл/выкл, читается ДО app ready (disableHardwareAcceleration), требует перезапуск
+- [x] Прокси: режим системный/без прокси/вручную, session.setProxy (direct/fixed_servers/system)
+- [x] Настройки: секция «Система» (hw accel, proxy mode, proxy server)
+- [x] Default settings: system.hardwareAcceleration/proxyMode/proxyServer
+
 ## 2026-08-12 — v0.3.3 — About (О браузере)
 
 ### Completed

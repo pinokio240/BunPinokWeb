@@ -35,6 +35,23 @@ let bookmarksBarVisible = false;
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
 
+function readHardwareAccelerationSetting() {
+    try {
+        const userData = app.getPath('userData');
+        const configPath = path.join(userData, 'settings.json');
+        if (fs.existsSync(configPath)) {
+            const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+            if (data['system.hardwareAcceleration'] === false) {
+                app.disableHardwareAcceleration();
+            }
+        }
+    } catch (err) {
+        console.error('Не удалось прочитать настройку аппаратного ускорения:', err);
+    }
+}
+
+readHardwareAccelerationSetting();
+
 function createMainWindow() {
     mainWindow = new BrowserWindow({
         width: settingsStore.get('window.width', 1280),
@@ -140,6 +157,9 @@ function setupIpcHandlers() {
         }
         if (key === 'language.spellcheckLanguages') {
             applySpellcheckSettings();
+        }
+        if (key === 'system.proxyMode' || key === 'system.proxyServer') {
+            applyProxySettings();
         }
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('settings:changed', settingsStore.getAll());
@@ -622,6 +642,18 @@ function translateActiveTab() {
     tabManager.navigateTab(tab.id, translateUrl);
 }
 
+function applyProxySettings() {
+    const mode = settingsStore.get('system.proxyMode', 'system');
+    if (mode === 'none') {
+        session.defaultSession.setProxy({ mode: 'direct' });
+    } else if (mode === 'manual') {
+        const server = settingsStore.get('system.proxyServer', '');
+        session.defaultSession.setProxy({ mode: 'fixed_servers', proxyRules: server });
+    } else {
+        session.defaultSession.setProxy({ mode: 'system' });
+    }
+}
+
 function updateChromeViewBounds() {
     if (!mainWindow || !chromeView) return;
     const contentBounds = mainWindow.contentView.getBounds();
@@ -742,6 +774,7 @@ app.whenReady().then(async () => {
 
     applyTheme(settingsStore.get('appearance.theme', 'system'));
     applySpellcheckSettings();
+    applyProxySettings();
 
     app.on('login', (event, _webContents, _details, authInfo, callback) => {
         event.preventDefault();

@@ -27,7 +27,10 @@ const DEFAULT_SETTINGS = {
     'language.spellcheck': true,
     'language.spellcheckLanguages': 'ru,en',
     'language.autoTranslate': false,
-    'search.engine': 'google'
+    'search.engine': 'google',
+    'system.hardwareAcceleration': true,
+    'system.proxyMode': 'system',
+    'system.proxyServer': ''
 };
 
 export class SettingsStore {
