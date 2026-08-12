@@ -1,4 +1,4 @@
-import { app, BrowserWindow, WebContentsView, ipcMain, session, protocol, dialog, Notification } from 'electron';
+import { app, BrowserWindow, WebContentsView, ipcMain, session, protocol, dialog, Notification, Menu } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -336,6 +336,56 @@ app.whenReady().then(async () => {
 
     tabManager = new TabManager(mainWindow, chromeViewOptions);
     extensionManager = new ExtensionManager(tabManager);
+
+    const menuTemplate = [
+        {
+            label: 'File',
+            submenu: [
+                { label: 'New Tab', accelerator: 'Ctrl+T', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } },
+                { label: 'New Window', accelerator: 'Ctrl+N', click: () => createMainWindow() },
+                { type: 'separator' },
+                { label: 'Settings', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
+                { type: 'separator' },
+                { role: 'quit' }
+            ]
+        },
+        {
+            label: 'Edit',
+            submenu: [
+                { role: 'undo' },
+                { role: 'redo' },
+                { type: 'separator' },
+                { role: 'cut' },
+                { role: 'copy' },
+                { role: 'paste' },
+                { role: 'selectAll' }
+            ]
+        },
+        {
+            label: 'View',
+            submenu: [
+                { label: 'Back', accelerator: 'Alt+Left', click: () => { const t = tabManager.getActiveTab(); if (t?.view?.webContents?.navigationHistory?.canGoBack()) t.view.webContents.navigationHistory.goBack(); } },
+                { label: 'Forward', accelerator: 'Alt+Right', click: () => { const t = tabManager.getActiveTab(); if (t?.view?.webContents?.navigationHistory?.canGoForward()) t.view.webContents.navigationHistory.goForward(); } },
+                { label: 'Reload', accelerator: 'Ctrl+R', click: () => { const t = tabManager.getActiveTab(); if (t) t.view.webContents.reload(); } },
+                { type: 'separator' },
+                { role: 'toggleDevTools' },
+                { type: 'separator' },
+                { role: 'resetZoom' },
+                { role: 'zoomIn' },
+                { role: 'zoomOut' },
+                { type: 'separator' },
+                { role: 'togglefullscreen' }
+            ]
+        },
+        {
+            label: 'Help',
+            submenu: [
+                { label: 'About BunPinokWeb', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } }
+            ]
+        }
+    ];
+
+    Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
     setupIpcHandlers();
 

@@ -36,8 +36,9 @@ html, body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px; color: var(--chrome-tab-active-text);
   background: var(--chrome-bg);
-  user-select: none;
 }
+#titlebar, #toolbar, #tab-strip, #window-controls, #status-bar { user-select: none; }
+input, button { user-select: auto; }
 #titlebar {
   position: fixed; top: 0; left: 0; right: 0; height: 32px;
   display: flex; align-items: center; background: var(--chrome-bg);
@@ -293,10 +294,18 @@ function setupEventListeners() {
         await browserAPI.tabs.navigate(activeTabId, url);
       }
       e.target.blur();
+      return;
+    }
+    if (e.ctrlKey && e.key === 'l') {
+      e.preventDefault();
+      e.target.select();
     }
   });
 
+  $('#omnibox').addEventListener('paste', () => {});
+
   document.addEventListener('keydown', (e) => {
+    const omniboxFocused = document.activeElement === $('#omnibox');
     if (e.ctrlKey && e.key === 't') {
       e.preventDefault();
       browserAPI.tabs.create('browser://newtab');
@@ -305,7 +314,7 @@ function setupEventListeners() {
       e.preventDefault();
       activeTabId && browserAPI.tabs.close(activeTabId);
     }
-    if (e.ctrlKey && e.key === 'l') {
+    if (e.ctrlKey && e.key === 'l' && !omniboxFocused) {
       e.preventDefault();
       $('#omnibox').focus();
       $('#omnibox').select();
