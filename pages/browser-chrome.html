@@ -337,9 +337,19 @@ async function renderBookmarksBar() {
   }
   bar.innerHTML = html;
   bar.querySelectorAll('.bm-item').forEach((item) => {
-    item.addEventListener('click', () => {
+    item.addEventListener('click', (e) => {
+      const url = item.dataset.url;
+      if (e.ctrlKey) {
+        browserAPI.tabs.create(url);
+        return;
+      }
       if (activeTabId) {
-        browserAPI.tabs.navigate(activeTabId, item.dataset.url);
+        browserAPI.tabs.navigate(activeTabId, url);
+      }
+    });
+    item.addEventListener('auxclick', (e) => {
+      if (e.button === 1) {
+        browserAPI.tabs.create(item.dataset.url);
       }
     });
     item.addEventListener('contextmenu', (e) => {
@@ -425,6 +435,11 @@ function renderTabs() {
     el.addEventListener('click', (e) => {
       if (!e.target.classList.contains('tab-close')) {
         browserAPI.tabs.select(tab.id);
+      }
+    });
+    el.addEventListener('auxclick', (e) => {
+      if (e.button === 1) {
+        browserAPI.tabs.close(tab.id);
       }
     });
     strip.appendChild(el);

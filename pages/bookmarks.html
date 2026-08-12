@@ -53,7 +53,6 @@ h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
 
   <div class="toolbar">
     <input type="text" class="search-box" id="search-box" placeholder="Поиск закладок" spellcheck="false">
-    <button class="btn" id="add-current-btn">Добавить текущую страницу</button>
   </div>
 
   <div id="bookmarks-list"></div>
@@ -132,9 +131,18 @@ async function renderBookmarks() {
         return;
       }
       const url = card.dataset.url;
+      if (e.ctrlKey) {
+        await window.browserAPI.tabs.create(url);
+        return;
+      }
       const active = await window.browserAPI.tabs.getActive();
       if (active) {
         await window.browserAPI.tabs.navigate(active.id, url);
+      }
+    });
+    card.addEventListener('auxclick', async (e) => {
+      if (e.button === 1) {
+        await window.browserAPI.tabs.create(card.dataset.url);
       }
     });
   });
@@ -150,14 +158,6 @@ async function renderBookmarks() {
 
 document.getElementById('search-box').addEventListener('input', () => {
   renderBookmarks();
-});
-
-document.getElementById('add-current-btn').addEventListener('click', async () => {
-  const active = await window.browserAPI.tabs.getActive();
-  if (active) {
-    await window.browserAPI.bookmarks.add(active.url, active.title);
-    renderBookmarks();
-  }
 });
 
 renderBookmarks();

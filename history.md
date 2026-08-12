@@ -1,5 +1,16 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.2.5 — Bookmark Navigation Fixes
+
+### Investigation
+Traced full bookmark navigation chain: parser (tested 8 URL types — OK), IPC, loadURL, escapeHtml/dataset roundtrip (entities decode correctly). Found gaps vs Chrome behavior:
+
+### Fixes
+- [x] Панель закладок: Ctrl+клик и средний клик (колесо) открывают закладку в НОВОЙ вкладке (было: всегда текущая)
+- [x] Страница browser://bookmarks: Ctrl+клик и средний клик — новая вкладка
+- [x] Убрана бесполезная кнопка «Добавить текущую страницу» со страницы закладок (активная вкладка — сама страница закладок, browser:// не добавляется)
+- [x] Средний клик по вкладке закрывает её (поведение Chrome)
+
 ## 2026-08-12 — v0.2.4 — Bookmarks UX + Permission "Ask" Dialogs
 
 ### Bookmarks UX
