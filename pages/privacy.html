@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Приватность - BunPinokWeb</title>
+<style>
+:root {
+  --bg: #f1f3f4; --card: #ffffff; --text: #202124; --subtext: #5f6368;
+  --border: #dadce0; --accent: #1a73e8; --accent-hover: #1765cc; --danger: #d93025;
+  --toggle-on: #1a73e8; --toggle-off: #dadce0;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; overflow-y: auto; }
+.container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
+.subtitle { color: var(--subtext); margin-bottom: 24px; }
+.back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; cursor: pointer; }
+.back-link:hover { text-decoration: underline; }
+.section { background: var(--card); border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); gap: 16px; }
+.row:last-child { border-bottom: none; }
+.row-label { flex: 1; }
+.row-label .title { font-weight: 500; }
+.row-label .desc { font-size: 12px; color: var(--subtext); margin-top: 2px; }
+select { padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; outline: none; background: var(--card); color: var(--text); }
+select:focus { border-color: var(--accent); }
+.toggle {
+  width: 36px; height: 20px; border-radius: 10px; border: none;
+  cursor: pointer; position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--toggle-on); }
+.toggle.off { background: var(--toggle-off); }
+.toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: white; transition: transform 0.2s;
+}
+.toggle.on::after { transform: translateX(16px); }
+.btn { padding: 9px 16px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; background: var(--card); color: var(--accent); }
+.btn:hover { background: #e8f0fe; }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.danger:hover { background: #fce8e6; }
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #202124; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back-link" onclick="history.back()">← Назад</a>
+  <h1>Приватность и безопасность</h1>
+  <p class="subtitle">Управление разрешениями сайтов и данными</p>
+
+  <div class="section">
+    <div class="section-title">Разрешения сайтов</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Уведомления</div>
+        <div class="desc">Разрешать сайтам показывать уведомления</div>
+      </div>
+      <select id="privacy-notifications">
+        <option value="allow">Разрешить</option>
+        <option value="block">Заблокировать</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Геолокация</div>
+        <div class="desc">Доступ сайтов к вашему местоположению</div>
+      </div>
+      <select id="privacy-geolocation">
+        <option value="allow">Разрешить</option>
+        <option value="block">Заблокировать</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Камера</div>
+      </div>
+      <select id="privacy-camera">
+        <option value="allow">Разрешить</option>
+        <option value="block">Заблокировать</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Микрофон</div>
+      </div>
+      <select id="privacy-microphone">
+        <option value="allow">Разрешить</option>
+        <option value="block">Заблокировать</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Всплывающие окна</div>
+        <div class="desc">Блокировать открытие новых окон сайтами</div>
+      </div>
+      <select id="privacy-popups">
+        <option value="block">Блокировать</option>
+        <option value="allow">Разрешить</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Заголовки запросов</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Do Not Track</div>
+        <div class="desc">Сообщать сайтам, что вы не хотите, чтобы вас отслеживали</div>
+      </div>
+      <button class="toggle off" id="dnt-toggle"></button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Данные</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Очистить cookie</div>
+        <div class="desc">Удалить все файлы cookie и данные сайтов</div>
+      </div>
+      <button class="btn danger" id="clear-cookies-btn">Очистить</button>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Очистить кэш</div>
+      </div>
+      <button class="btn danger" id="clear-cache-btn">Очистить</button>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Очистить историю</div>
+      </div>
+      <button class="btn danger" id="clear-history-btn">Очистить</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function setSelect(id, value) {
+  const el = document.getElementById(id);
+  if (!el) {
+    return;
+  }
+  for (const opt of el.options) {
+    if (opt.value === value) {
+      opt.selected = true;
+      break;
+    }
+  }
+}
+
+function getSelect(id) {
+  const el = document.getElementById(id);
+  return el.value;
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+async function loadSettings() {
+  const all = await window.browserAPI.settings.getAll();
+  setSelect('privacy-notifications', all['privacy.notifications'] || 'allow');
+  setSelect('privacy-geolocation', all['privacy.geolocation'] || 'allow');
+  setSelect('privacy-camera', all['privacy.camera'] || 'allow');
+  setSelect('privacy-microphone', all['privacy.microphone'] || 'allow');
+  setSelect('privacy-popups', all['privacy.popups'] || 'block');
+  updateDntToggle(all['privacy.dnt'] === true);
+}
+
+function updateDntToggle(on) {
+  const toggle = document.getElementById('dnt-toggle');
+  if (on) {
+    toggle.className = 'toggle on';
+  } else {
+    toggle.className = 'toggle off';
+  }
+}
+
+document.getElementById('privacy-notifications').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('privacy.notifications', e.target.value);
+  showToast('Сохранено');
+});
+
+document.getElementById('privacy-geolocation').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('privacy.geolocation', e.target.value);
+  showToast('Сохранено');
+});
+
+document.getElementById('privacy-camera').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('privacy.camera', e.target.value);
+  showToast('Сохранено');
+});
+
+document.getElementById('privacy-microphone').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('privacy.microphone', e.target.value);
+  showToast('Сохранено');
+});
+
+document.getElementById('privacy-popups').addEventListener('change', async (e) => {
+  await window.browserAPI.settings.set('privacy.popups', e.target.value);
+  showToast('Сохранено');
+});
+
+document.getElementById('dnt-toggle').addEventListener('click', async () => {
+  const all = await window.browserAPI.settings.getAll();
+  const newValue = all['privacy.dnt'] !== true;
+  await window.browserAPI.settings.set('privacy.dnt', newValue);
+  updateDntToggle(newValue);
+  showToast('Сохранено');
+});
+
+document.getElementById('clear-cookies-btn').addEventListener('click', async () => {
+  const result = await window.browserAPI.settings.clearBrowsingData({ cookies: true, localStorage: true });
+  if (result.success) {
+    showToast('Cookie очищены');
+  } else {
+    showToast('Не удалось очистить');
+  }
+});
+
+document.getElementById('clear-cache-btn').addEventListener('click', async () => {
+  const result = await window.browserAPI.settings.clearBrowsingData({ cache: true });
+  if (result.success) {
+    showToast('Кэш очищен');
+  } else {
+    showToast('Не удалось очистить');
+  }
+});
+
+document.getElementById('clear-history-btn').addEventListener('click', async () => {
+  await window.browserAPI.history.clear();
+  showToast('История очищена');
+});
+
+loadSettings();
+</script>
+</body>
+</html>

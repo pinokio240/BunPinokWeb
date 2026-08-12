@@ -13,7 +13,13 @@ const DEFAULT_SETTINGS = {
     'notifications.soundEnabled': true,
     'notifications.soundPath': '',
     'window.width': 1280,
-    'window.height': 800
+    'window.height': 800,
+    'privacy.notifications': 'allow',
+    'privacy.geolocation': 'allow',
+    'privacy.camera': 'allow',
+    'privacy.microphone': 'allow',
+    'privacy.popups': 'block',
+    'privacy.dnt': false
 };
 
 export class SettingsStore {

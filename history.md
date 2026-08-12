@@ -1,5 +1,15 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.2.2 — Privacy & Security (Приватность)
+
+### Completed
+- [x] `pages/privacy.html`: разрешения сайтов (уведомления, гео, камера, микрофон, всплывающие окна), Do Not Track, очистка cookie/кэша/истории
+- [x] `browser://privacy` в protocol map, пункт в ⋮ меню и меню Файл
+- [x] Permission handler консультируется с настройками (не blanket-allow)
+- [x] Do Not Track header через webRequest.onBeforeSendHeaders
+- [x] Блокировка всплывающих окон: setWindowOpenHandler (new-window disposition denied; target=_blank открывает вкладку)
+- [x] Default settings: privacy.notifications/geolocation/camera/microphone/popups/dnt
+
 ## 2026-08-12 — v0.2.1 — Bookmarks (Закладки)
 
 ### Completed

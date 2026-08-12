@@ -20,11 +20,16 @@ export class TabManager {
         this.tabs = new Map();
         this.activeTabId = null;
         this.historyStore = null;
+        this.settingsStore = null;
         this._setupAutoUpdate();
     }
 
     setHistoryStore(historyStore) {
         this.historyStore = historyStore;
+    }
+
+    setSettingsStore(settingsStore) {
+        this.settingsStore = settingsStore;
     }
 
     createTab(url = 'browser://newtab') {
@@ -76,6 +81,11 @@ export class TabManager {
             this._showPageContextMenu(tab, params);
         });
 
+        view.webContents.setWindowOpenHandler((details) => {
+            this._handleWindowOpen(details);
+            return { action: 'deny' };
+        });
+
         this.mainWindow.contentView.addChildView(view);
         this.selectTab(id);
 
@@ -86,6 +96,16 @@ export class TabManager {
         }
 
         return id;
+    }
+
+    _handleWindowOpen(details) {
+        const popupsBlocked = this.settingsStore && this.settingsStore.get('privacy.popups', 'block') === 'block';
+        if (popupsBlocked && details.disposition === 'new-window') {
+            return;
+        }
+        if (details.url) {
+            this.createTab(details.url);
+        }
     }
 
     _handleBeforeInput(event, input, tab) {

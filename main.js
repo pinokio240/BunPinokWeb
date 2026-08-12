@@ -69,7 +69,8 @@ function setupProtocolHandler() {
             'extensions': 'pages/extensions.html',
             'downloads': 'pages/downloads.html',
             'history': 'pages/history.html',
-            'bookmarks': 'pages/bookmarks.html'
+            'bookmarks': 'pages/bookmarks.html',
+            'privacy': 'pages/privacy.html'
         };
 
         const filePath = pageMap[pageName];
@@ -393,6 +394,7 @@ function setupIpcHandlers() {
             { label: 'История', accelerator: 'Ctrl+H', click: () => { tabManager.createTab('browser://history'); updateChromeViewBounds(); } },
             { label: 'Закладки', accelerator: 'Ctrl+Shift+O', click: () => { tabManager.createTab('browser://bookmarks'); updateChromeViewBounds(); } },
             { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
+            { label: 'Приватность', click: () => { tabManager.createTab('browser://privacy'); updateChromeViewBounds(); } },
             { label: 'Расширения', click: () => { tabManager.createTab('browser://extensions'); updateChromeViewBounds(); } },
             { type: 'separator' },
             { label: 'Увеличить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(t.view.webContents.getZoomLevel() + 0.5); } } },
@@ -529,6 +531,7 @@ app.whenReady().then(async () => {
 
     tabManager = new TabManager(mainWindow, chromeViewOptions);
     tabManager.setHistoryStore(historyStore);
+    tabManager.setSettingsStore(settingsStore);
     extensionManager = new ExtensionManager(tabManager);
 
     const menuTemplate = [
@@ -544,6 +547,7 @@ app.whenReady().then(async () => {
                 { label: 'Добавить страницу в закладки', accelerator: 'Ctrl+D', click: () => { const t = tabManager.getActiveTab(); if (t) { bookmarkStore.add(t.url, t.title); mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll()); } } },
                 { type: 'separator' },
                 { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
+                { label: 'Приватность', click: () => { tabManager.createTab('browser://privacy'); updateChromeViewBounds(); } },
                 { type: 'separator' },
                 { role: 'quit', label: 'Выход' }
             ]
@@ -625,14 +629,39 @@ app.whenReady().then(async () => {
     });
 
     session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-        const allowedPermissions = ['notifications', 'media', 'geolocation'];
-        if (allowedPermissions.includes(permission)) {
-            callback(true);
+        callback(isPermissionAllowed(permission));
+    });
+
+    session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+        const dntEnabled = settingsStore.get('privacy.dnt', false);
+        if (dntEnabled) {
+            const requestHeaders = details.requestHeaders;
+            const headers = {};
+            for (const key of Object.keys(requestHeaders)) {
+                headers[key] = requestHeaders[key];
+            }
+            headers['DNT'] = '1';
+            callback({ requestHeaders: headers });
         } else {
-            callback(false);
+            callback({ requestHeaders: details.requestHeaders });
         }
     });
 });
+
+function isPermissionAllowed(permission) {
+    if (permission === 'notifications') {
+        return settingsStore.get('privacy.notifications', 'allow') === 'allow';
+    }
+    if (permission === 'geolocation') {
+        return settingsStore.get('privacy.geolocation', 'allow') === 'allow';
+    }
+    if (permission === 'media') {
+        const camera = settingsStore.get('privacy.camera', 'allow') === 'allow';
+        const microphone = settingsStore.get('privacy.microphone', 'allow') === 'allow';
+        return camera || microphone;
+    }
+    return false;
+}
 
 app.on('before-quit', () => {
     pipManager.closeAll();
