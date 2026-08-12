@@ -1,5 +1,15 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.4.8 — Session Restore (Продолжить с того места)
+
+### Bug
+Настройка «Продолжить с того места, где остановились» не работала — старт всегда открывал browser://newtab.
+
+### Fixes
+- [x] src/session-store.js: SessionStore — сохранение вкладок в userData/session.json
+- [x] restoreStartupTabs(): continue → восстановление вкладок, vk → https://vk.com, newtab → новая вкладка
+- [x] Автосохранение сессии каждые 30 сек + при before-quit
+
 ## 2026-08-12 — v0.4.7 — Extension Popup Rendering Fix (по исследованию)
 
 ### Research findings (web)

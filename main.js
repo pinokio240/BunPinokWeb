@@ -30,6 +30,7 @@ import { PasswordStore } from './src/password-store.js';
 import { AuthDialogManager } from './src/auth-dialog.js';
 import { CrxInstaller } from './src/crx-installer.js';
 import { XpiConverter } from './src/xpi-converter.js';
+import { SessionStore } from './src/session-store.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -46,6 +47,7 @@ let passwordStore = null;
 let authDialogManager = null;
 let crxInstaller = null;
 let xpiConverter = null;
+let sessionStore = null;
 let bookmarksBarVisible = false;
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
@@ -848,6 +850,31 @@ function openExtensionPopup(extId, popupPath, x, y) {
     extensionPopupWindows.push(win);
 }
 
+function restoreStartupTabs() {
+    const startupPage = settingsStore.get('onStartup.page', 'newtab');
+
+    if (startupPage === 'continue') {
+        const savedTabs = sessionStore.load();
+        if (savedTabs.length > 0) {
+            for (const savedTab of savedTabs) {
+                let url = savedTab.url;
+                if (!url || url === '') {
+                    url = 'browser://newtab';
+                }
+                tabManager.createTab(url);
+            }
+            return;
+        }
+    }
+
+    if (startupPage === 'vk') {
+        tabManager.createTab('https://vk.com');
+        return;
+    }
+
+    tabManager.createTab('browser://newtab');
+}
+
 function updateChromeViewBounds() {
     if (!mainWindow || !chromeView) return;
     const contentBounds = mainWindow.contentView.getBounds();
@@ -876,6 +903,7 @@ app.whenReady().then(async () => {
     downloadManager = new DownloadManager(settingsStore, () => mainWindow);
     historyStore = new HistoryStore();
     bookmarkStore = new BookmarkStore();
+    sessionStore = new SessionStore();
     permissionDialogManager = new PermissionDialogManager();
     passwordStore = new PasswordStore();
     authDialogManager = new AuthDialogManager();
@@ -993,10 +1021,14 @@ app.whenReady().then(async () => {
         });
     });
 
-    const startupUrl = settingsStore.get('onStartup.url', 'browser://newtab');
-    const parsed = parseUserInput(startupUrl);
-    tabManager.createTab(parsed);
+    restoreStartupTabs();
     updateChromeViewBounds();
+
+    setInterval(() => {
+        if (tabManager && tabManager.getTabCount() > 0) {
+            sessionStore.save(tabManager.getAllTabs());
+        }
+    }, 30000);
 
     downloadManager.attach(session.defaultSession);
 
@@ -1094,6 +1126,9 @@ function resolvePermission(settingKey, permission, origin, callback) {
 }
 
 app.on('before-quit', () => {
+    if (tabManager && tabManager.getTabCount() > 0 && sessionStore) {
+        sessionStore.save(tabManager.getAllTabs());
+    }
     pipManager.closeAll();
     if (tabManager) tabManager.destroy();
 });
