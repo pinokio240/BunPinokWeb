@@ -1,5 +1,21 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.1.5 — Full Russian Localization
+
+### Completed
+- [x] main.js: application menu (Файл/Правка/Вид/Справка) translated
+- [x] main.js: dialog titles (download folder, extension folder) translated
+- [x] main.js: `app.commandLine.appendSwitch('lang', 'ru-RU')` for Chromium locale
+- [x] tabs.js: page context menu fully Russian (Сохранить изображение как, Исследовать элемент...)
+- [x] tabs.js: default tab title «Новая вкладка»
+- [x] browser-chrome.html: tab strip, omnibox placeholder, window controls, ⋮ menu translated
+- [x] newtab.html: subtitle, search placeholder, quick links (ВКонтакте, Переводчик...)
+- [x] settings.html: all 6 sections + toasts translated
+- [x] extensions.html: developer mode, load/remove buttons, toasts translated
+- [x] downloads.html: statuses, progress, clear button translated
+- [x] pip.js: PiP player UI translated
+- [x] downloads.js: save dialog title translated
+
 ## 2026-08-12 — v0.1.4 — UX Fixes: Downloads, Menu, Theme, Hotkeys, Context Menus
 
 ### User Bug Report (fixed)

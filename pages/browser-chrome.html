@@ -212,36 +212,36 @@ input, button { user-select: auto; }
 <div id="titlebar">
   <div id="titlebar-tabs">
     <div id="tab-strip"></div>
-    <button id="new-tab-btn" title="New Tab">+</button>
+    <button id="new-tab-btn" title="Новая вкладка">+</button>
   </div>
   <div id="window-controls">
-    <button class="win-btn" id="min-btn" title="Minimize">─</button>
-    <button class="win-btn" id="max-btn" title="Maximize">☐</button>
-    <button class="win-btn close" id="close-btn" title="Close">✕</button>
+    <button class="win-btn" id="min-btn" title="Свернуть">─</button>
+    <button class="win-btn" id="max-btn" title="Развернуть">☐</button>
+    <button class="win-btn close" id="close-btn" title="Закрыть">✕</button>
   </div>
 </div>
 
 <div id="toolbar">
-  <button class="nav-btn" id="back-btn" title="Back">←</button>
-  <button class="nav-btn" id="forward-btn" title="Forward">→</button>
-  <button class="nav-btn" id="reload-btn" title="Reload">↻</button>
-  <input type="text" id="omnibox" placeholder="Search Google or type a URL" spellcheck="false" autocomplete="off">
+  <button class="nav-btn" id="back-btn" title="Назад">←</button>
+  <button class="nav-btn" id="forward-btn" title="Вперёд">→</button>
+  <button class="nav-btn" id="reload-btn" title="Обновить">↻</button>
+  <input type="text" id="omnibox" placeholder="Найдите в Google или введите URL" spellcheck="false" autocomplete="off">
   <div id="extensions-bar"></div>
-  <button id="menu-btn" title="Menu">⋮</button>
+  <button id="menu-btn" title="Меню">⋮</button>
 </div>
 
 <div id="dropdown-menu">
-  <div class="menu-item" data-action="new-tab"><span class="menu-icon">🗔</span> New tab <span style="margin-left:auto;opacity:0.5">Ctrl+T</span></div>
-  <div class="menu-item" data-action="downloads"><span class="menu-icon">⬇️</span> Downloads <span style="margin-left:auto;opacity:0.5">Ctrl+J</span></div>
-  <div class="menu-item" data-action="settings"><span class="menu-icon">⚙️</span> Settings</div>
-  <div class="menu-item" data-action="extensions"><span class="menu-icon">🧩</span> Extensions</div>
+  <div class="menu-item" data-action="new-tab"><span class="menu-icon">🗔</span> Новая вкладка <span style="margin-left:auto;opacity:0.5">Ctrl+T</span></div>
+  <div class="menu-item" data-action="downloads"><span class="menu-icon">⬇️</span> Загрузки <span style="margin-left:auto;opacity:0.5">Ctrl+J</span></div>
+  <div class="menu-item" data-action="settings"><span class="menu-icon">⚙️</span> Настройки</div>
+  <div class="menu-item" data-action="extensions"><span class="menu-icon">🧩</span> Расширения</div>
   <div class="menu-separator"></div>
-  <div class="menu-item" data-action="zoom-in"><span class="menu-icon">🔍+</span> Zoom in</div>
-  <div class="menu-item" data-action="zoom-out"><span class="menu-icon">🔍−</span> Zoom out</div>
-  <div class="menu-item" data-action="zoom-reset"><span class="menu-icon">🔍</span> Reset zoom</div>
+  <div class="menu-item" data-action="zoom-in"><span class="menu-icon">🔍+</span> Увеличить масштаб</div>
+  <div class="menu-item" data-action="zoom-out"><span class="menu-icon">🔍−</span> Уменьшить масштаб</div>
+  <div class="menu-item" data-action="zoom-reset"><span class="menu-icon">🔍</span> Сбросить масштаб</div>
   <div class="menu-separator"></div>
-  <div class="menu-item" data-action="fullscreen"><span class="menu-icon">⛶</span> Fullscreen</div>
-  <div class="menu-item" data-action="exit"><span class="menu-icon">⏻</span> Exit</div>
+  <div class="menu-item" data-action="fullscreen"><span class="menu-icon">⛶</span> Во весь экран</div>
+  <div class="menu-item" data-action="exit"><span class="menu-icon">⏻</span> Выход</div>
 </div>
 
 <div id="content-area"></div>
@@ -291,7 +291,7 @@ function getTabLabel(tab) {
   if (tab.url) {
     return tab.url;
   }
-  return 'New Tab';
+  return 'Новая вкладка';
 }
 
 function renderTabs() {

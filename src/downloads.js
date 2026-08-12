@@ -63,7 +63,7 @@ export class DownloadManager {
         if (askBeforeSave) {
             const mainWindow = this.mainWindowGetter();
             const options = {
-                title: 'Save file',
+                title: 'Сохранить файл',
                 defaultPath: targetPath || record.filename,
                 buttonLabel: 'Save'
             };

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Extensions - BunPinokWeb</title>
+<title>Расширения - BunPinokWeb</title>
 <style>
 :root {
   --bg: #f1f3f4; --card: #ffffff; --text: #202124; --subtext: #5f6368;
@@ -54,23 +54,23 @@ h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
 </head>
 <body>
 <div class="container">
-  <a class="back-link" onclick="history.back()">← Back</a>
+  <a class="back-link" onclick="history.back()">← Назад</a>
   <div class="toolbar">
     <div>
-      <h1>Extensions</h1>
-      <p class="subtitle">Manage your browser extensions</p>
+      <h1>Расширения</h1>
+      <p class="subtitle">Управление расширениями браузера</p>
     </div>
     <label class="dev-mode-label">
       <div class="toggle on" id="dev-mode-toggle"></div>
-      Developer mode
+      Режим разработчика
     </label>
   </div>
 
   <div id="extensions-list"></div>
 
   <div class="load-section" id="load-section" style="display:none;">
-    <p>Load an unpacked extension to get started</p>
-    <button class="btn primary" id="load-ext-btn">Load unpacked</button>
+    <p>Загрузите распакованное расширение, чтобы начать</p>
+    <button class="btn primary" id="load-ext-btn">Загрузить распакованное</button>
   </div>
 </div>
 
@@ -88,8 +88,8 @@ async function loadExtensions() {
     list.innerHTML = `
       <div class="empty-state">
         <div class="icon">🧩</div>
-        <p>No extensions installed</p>
-        <p style="font-size:12px">Click "Load unpacked" in developer mode to add an extension</p>
+        <p>Расширения не установлены</p>
+        <p style="font-size:12px">Click "Load unpacked" in Режим разработчика to add an extension</p>
       </div>
     `;
     loadSection.style.display = 'block';
@@ -100,18 +100,18 @@ async function loadExtensions() {
   const cardsHtml = [];
   for (const ext of extensions) {
     let enabledClass = 'off';
-    let enabledTitle = 'Enable';
+    let enabledTitle = 'Включить';
     if (ext.enabled) {
       enabledClass = 'on';
-      enabledTitle = 'Disable';
+      enabledTitle = 'Отключить';
     }
-    let description = 'No description';
+    let description = 'Нет описания';
     if (ext.description) {
       description = ext.description;
     }
     let removeButtonHtml = '';
     if (devMode) {
-      removeButtonHtml = `<button class="btn danger" data-remove="${escapeHtml(ext.id)}">Remove</button>`;
+      removeButtonHtml = `<button class="btn danger" data-remove="${escapeHtml(ext.id)}">Удалить</button>`;
     }
     cardsHtml.push(`
     <div class="ext-card" data-id="${escapeHtml(ext.id)}">
@@ -143,10 +143,10 @@ async function loadExtensions() {
     btn.addEventListener('click', async () => {
       const extId = btn.dataset.remove;
       const result = await window.browserAPI.extensions.unload(extId);
-      let message = 'Failed to remove';
+      let message = 'Не удалось удалить';
       let toastType = 'error';
       if (result.success) {
-        message = 'Extension removed';
+        message = 'Расширение удалено';
         toastType = '';
       }
       showToast(message, toastType);
@@ -189,10 +189,10 @@ document.getElementById('dev-mode-toggle').addEventListener('click', function() 
 document.getElementById('load-ext-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.extensions.loadUnpacked();
   if (result.success) {
-    showToast(`Extension "${result.id}" loaded`);
+    showToast(`Расширение "${result.id}" загружено`);
     loadExtensions();
   } else {
-    let errorMsg = 'Failed to load extension';
+    let errorMsg = 'Не удалось загрузить расширение';
     if (result.error) {
       errorMsg = result.error;
     }

@@ -22,6 +22,8 @@ let notificationManager = null;
 let pipManager = null;
 let downloadManager = null;
 
+app.commandLine.appendSwitch('lang', 'ru-RU');
+
 function createMainWindow() {
     mainWindow = new BrowserWindow({
         width: settingsStore.get('window.width', 1280),
@@ -270,7 +272,7 @@ function setupIpcHandlers() {
     ipcMain.handle('downloads:setPath', async () => {
         const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openDirectory'],
-            title: 'Select download folder'
+            title: 'Выберите папку для загрузок'
         });
         if (!result.canceled && result.filePaths.length > 0) {
             settingsStore.set('downloads.path', result.filePaths[0]);
@@ -295,7 +297,7 @@ function setupIpcHandlers() {
     ipcMain.handle('extensions:loadUnpacked', async () => {
         const result = await dialog.showOpenDialog(mainWindow, {
             properties: ['openDirectory'],
-            title: 'Select extension folder'
+            title: 'Выберите папку расширения'
         });
         if (!result.canceled && result.filePaths.length > 0) {
             try {
@@ -430,51 +432,51 @@ app.whenReady().then(async () => {
 
     const menuTemplate = [
         {
-            label: 'File',
+            label: 'Файл',
             submenu: [
-                { label: 'New Tab', accelerator: 'Ctrl+T', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } },
-                { label: 'New Window', accelerator: 'Ctrl+N', click: () => createMainWindow() },
+                { label: 'Новая вкладка', accelerator: 'Ctrl+T', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } },
+                { label: 'Новое окно', accelerator: 'Ctrl+N', click: () => createMainWindow() },
                 { type: 'separator' },
-                { label: 'Downloads', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
-                { label: 'Settings', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
+                { label: 'Загрузки', accelerator: 'Ctrl+J', click: () => { tabManager.createTab('browser://downloads'); updateChromeViewBounds(); } },
+                { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
                 { type: 'separator' },
-                { role: 'quit' }
+                { role: 'quit', label: 'Выход' }
             ]
         },
         {
-            label: 'Edit',
+            label: 'Правка',
             submenu: [
-                { role: 'undo' },
-                { role: 'redo' },
+                { role: 'undo', label: 'Отменить' },
+                { role: 'redo', label: 'Повторить' },
                 { type: 'separator' },
-                { role: 'cut' },
-                { role: 'copy' },
-                { role: 'paste' },
-                { role: 'selectAll' }
+                { role: 'cut', label: 'Вырезать' },
+                { role: 'copy', label: 'Копировать' },
+                { role: 'paste', label: 'Вставить' },
+                { role: 'selectAll', label: 'Выделить всё' }
             ]
         },
         {
-            label: 'View',
+            label: 'Вид',
             submenu: [
-                { label: 'Back', accelerator: 'Alt+Left', click: () => { const t = tabManager.getActiveTab(); if (t && t.view && t.view.webContents && t.view.webContents.navigationHistory && t.view.webContents.navigationHistory.canGoBack()) { t.view.webContents.navigationHistory.goBack(); } } },
-                { label: 'Forward', accelerator: 'Alt+Right', click: () => { const t = tabManager.getActiveTab(); if (t && t.view && t.view.webContents && t.view.webContents.navigationHistory && t.view.webContents.navigationHistory.canGoForward()) { t.view.webContents.navigationHistory.goForward(); } } },
-                { label: 'Reload', accelerator: 'Ctrl+R', click: () => { const t = tabManager.getActiveTab(); if (t) t.view.webContents.reload(); } },
+                { label: 'Назад', accelerator: 'Alt+Left', click: () => { const t = tabManager.getActiveTab(); if (t && t.view && t.view.webContents && t.view.webContents.navigationHistory && t.view.webContents.navigationHistory.canGoBack()) { t.view.webContents.navigationHistory.goBack(); } } },
+                { label: 'Вперёд', accelerator: 'Alt+Right', click: () => { const t = tabManager.getActiveTab(); if (t && t.view && t.view.webContents && t.view.webContents.navigationHistory && t.view.webContents.navigationHistory.canGoForward()) { t.view.webContents.navigationHistory.goForward(); } } },
+                { label: 'Обновить', accelerator: 'Ctrl+R', click: () => { const t = tabManager.getActiveTab(); if (t) t.view.webContents.reload(); } },
                 { type: 'separator' },
-                { label: 'Close Tab', accelerator: 'Ctrl+W', click: () => { const t = tabManager.getActiveTab(); if (t) { tabManager.closeTab(t.id); updateChromeViewBounds(); if (tabManager.getTabCount() === 0) { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } } } },
+                { label: 'Закрыть вкладку', accelerator: 'Ctrl+W', click: () => { const t = tabManager.getActiveTab(); if (t) { tabManager.closeTab(t.id); updateChromeViewBounds(); if (tabManager.getTabCount() === 0) { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } } } },
                 { type: 'separator' },
-                { role: 'toggleDevTools' },
+                { role: 'toggleDevTools', label: 'Инструменты разработчика' },
                 { type: 'separator' },
-                { role: 'resetZoom' },
-                { role: 'zoomIn' },
-                { role: 'zoomOut' },
+                { role: 'resetZoom', label: 'Сбросить масштаб' },
+                { role: 'zoomIn', label: 'Увеличить' },
+                { role: 'zoomOut', label: 'Уменьшить' },
                 { type: 'separator' },
-                { role: 'togglefullscreen' }
+                { role: 'togglefullscreen', label: 'Во весь экран' }
             ]
         },
         {
-            label: 'Help',
+            label: 'Справка',
             submenu: [
-                { label: 'About BunPinokWeb', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } }
+                { label: 'О BunPinokWeb', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } }
             ]
         }
     ];
@@ -507,11 +509,11 @@ app.whenReady().then(async () => {
     mainWindow.webContents.on('context-menu', (_event, params) => {
         const { editFlags } = params;
         const contextMenuTemplate = [
-            { label: 'Cut', role: 'cut', enabled: editFlags.canCut },
-            { label: 'Copy', role: 'copy', enabled: editFlags.canCopy },
-            { label: 'Paste', role: 'paste', enabled: editFlags.canPaste },
+            { label: 'Вырезать', role: 'cut', enabled: editFlags.canCut },
+            { label: 'Копировать', role: 'copy', enabled: editFlags.canCopy },
+            { label: 'Вставить', role: 'paste', enabled: editFlags.canPaste },
             { type: 'separator' },
-            { label: 'Select All', role: 'selectAll', enabled: editFlags.canSelectAll }
+            { label: 'Выделить всё', role: 'selectAll', enabled: editFlags.canSelectAll }
         ];
         const menu = Menu.buildFromTemplate(contextMenuTemplate);
         menu.popup({ window: mainWindow });

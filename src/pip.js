@@ -27,7 +27,7 @@ export class PipManager {
             return tabId;
         }
 
-        let pipTitle = 'Video';
+        let pipTitle = 'Видео';
         if (tab.title) {
             pipTitle = tab.title;
         }
@@ -66,15 +66,15 @@ body:hover .controls,.controls:hover{opacity:1;}
 </style></head><body>
 <div class="drag"></div>
 <div class="controls">
-  <button class="ctrl-btn" id="btnClose" title="Close PiP">✕</button>
+  <button class="ctrl-btn" id="btnClose" title="Закрыть PiP">✕</button>
 </div>
 <video id="vid" autoplay controls loop></video>
-<div class="info" id="info">PiP Player</div>
+<div class="info" id="info">PiP-плеер</div>
 <script>
 const {ipcRenderer} = require('electron');
 document.getElementById('btnClose').onclick = () => ipcRenderer.send('pip:close');
-document.getElementById('vid').onplay = () => document.getElementById('info').textContent = '▶ Playing';
-document.getElementById('vid').onpause = () => document.getElementById('info').textContent = '⏸ Paused';
+document.getElementById('vid').onplay = () => document.getElementById('info').textContent = '▶ Воспроизведение';
+document.getElementById('vid').onpause = () => document.getElementById('info').textContent = '⏸ Пауза';
 </script></body></html>`;
 
         pipWin.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(pipHTML)}`);

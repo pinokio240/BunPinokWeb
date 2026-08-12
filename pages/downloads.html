@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Downloads - BunPinokWeb</title>
+<title>Загрузки - BunPinokWeb</title>
 <style>
 :root {
   --bg: #f1f3f4; --card: #ffffff; --text: #202124; --subtext: #5f6368;
@@ -36,13 +36,13 @@ h1 { font-size: 28px; font-weight: 400; margin-bottom: 8px; }
 </head>
 <body>
 <div class="container">
-  <a class="back-link" onclick="history.back()">← Back</a>
+  <a class="back-link" onclick="history.back()">← Назад</a>
   <div class="toolbar">
     <div>
-      <h1>Downloads</h1>
-      <p class="subtitle">Files you download are shown here</p>
+      <h1>Загрузки</h1>
+      <p class="subtitle">Файлы, которые вы скачиваете, отображаются здесь</p>
     </div>
-    <button class="btn" id="clear-btn">Clear finished</button>
+    <button class="btn" id="clear-btn">Очистить завершённые</button>
   </div>
   <div id="downloads-list"></div>
 </div>
@@ -63,20 +63,20 @@ function formatBytes(bytes) {
 }
 
 function statusLabel(state) {
-  if (state === 'completed') {
-    return 'Completed';
+  if (state === 'Завершено') {
+    return 'Завершено';
   }
   if (state === 'progressing') {
-    return 'Downloading...';
+    return 'Загрузка...';
   }
-  if (state === 'cancelled') {
-    return 'Cancelled';
+  if (state === 'Отменено') {
+    return 'Отменено';
   }
-  if (state === 'failed') {
-    return 'Failed';
+  if (state === 'Ошибка') {
+    return 'Ошибка';
   }
-  if (state === 'interrupted') {
-    return 'Interrupted';
+  if (state === 'Прервано') {
+    return 'Прервано';
   }
   return state;
 }
@@ -99,7 +99,7 @@ async function renderDownloads() {
     list.innerHTML = `
       <div class="empty-state">
         <div class="icon">⬇️</div>
-        <p>No downloads yet</p>
+        <p>Загрузок пока нет</p>
       </div>
     `;
     return;
@@ -121,12 +121,12 @@ async function renderDownloads() {
     }
     let details = '';
     if (item.state === 'progressing') {
-      details = formatBytes(item.receivedBytes) + ' of ' + formatBytes(item.totalBytes);
-    } else if (item.state === 'completed') {
+      details = formatBytes(item.receivedBytes) + ' из ' + formatBytes(item.totalBytes);
+    } else if (item.state === 'Завершено') {
       details = formatBytes(item.totalBytes);
     }
     let icon = '⬇️';
-    if (item.state === 'completed') {
+    if (item.state === 'Завершено') {
       icon = '✅';
     }
     let detailsText = '';

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -37,119 +37,119 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
 </head>
 <body>
 <div class="container">
-  <a class="back-link" onclick="history.back()">← Back</a>
-  <h1>Settings</h1>
+  <a class="back-link" onclick="history.back()">← Назад</a>
+  <h1>Настройки</h1>
 
   <div class="section">
-    <div class="section-title">On Startup</div>
+    <div class="section-title">При запуске</div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Open the New Tab page</div>
+        <div class="title">Открывать страницу «Новая вкладка»</div>
       </div>
       <select id="setting-onStartup">
-        <option value="newtab">New Tab page</option>
-        <option value="vk">VK</option>
-        <option value="continue">Continue where you left off</option>
+        <option value="newtab">Страница «Новая вкладка»</option>
+        <option value="vk">ВКонтакте</option>
+        <option value="continue">Продолжить с того места, где остановились</option>
       </select>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">Appearance</div>
+    <div class="section-title">Внешний вид</div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Theme</div>
-        <div class="desc">Choose your browser theme</div>
+        <div class="title">Тема</div>
+        <div class="desc">Выберите тему браузера</div>
       </div>
       <select id="setting-theme">
-        <option value="system">System default</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
+        <option value="system">Системная</option>
+        <option value="light">Светлая</option>
+        <option value="dark">Тёмная</option>
       </select>
     </div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Show bookmarks bar</div>
+        <div class="title">Показывать панель закладок</div>
       </div>
       <select id="setting-bookmarks">
-        <option value="false">Off</option>
-        <option value="true">On</option>
+        <option value="false">Выкл.</option>
+        <option value="true">Вкл.</option>
       </select>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">Downloads</div>
+    <div class="section-title">Загрузки</div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Location</div>
-        <div class="desc" id="download-path-label">Default</div>
+        <div class="title">Расположение</div>
+        <div class="desc" id="download-path-label">По умолчанию</div>
       </div>
-      <button class="btn" id="download-path-btn">Change</button>
+      <button class="btn" id="download-path-btn">Изменить</button>
     </div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Ask where to save each file before downloading</div>
+        <div class="title">Спрашивать, куда сохранять каждый файл</div>
       </div>
       <select id="setting-ask-download">
-        <option value="true">On</option>
-        <option value="false">Off</option>
+        <option value="true">Вкл.</option>
+        <option value="false">Выкл.</option>
       </select>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">Notifications</div>
+    <div class="section-title">Уведомления</div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Enable notifications</div>
+        <div class="title">Включить уведомления</div>
       </div>
       <select id="setting-notifications">
-        <option value="true">On</option>
-        <option value="false">Off</option>
+        <option value="true">Вкл.</option>
+        <option value="false">Выкл.</option>
       </select>
     </div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Sound notifications</div>
+        <div class="title">Звуковые уведомления</div>
       </div>
       <select id="setting-sound">
-        <option value="true">On</option>
-        <option value="false">Off</option>
+        <option value="true">Вкл.</option>
+        <option value="false">Выкл.</option>
       </select>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">Privacy and Security</div>
+    <div class="section-title">Конфиденциальность и безопасность</div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Clear browsing data</div>
-        <div class="desc">Clear history, cookies, cache, and more</div>
+        <div class="title">Очистка данных просмотра</div>
+        <div class="desc">Очистить историю, cookie, кэш и другое</div>
       </div>
-      <button class="btn danger" id="clear-cache-btn">Clear cache</button>
+      <button class="btn danger" id="clear-cache-btn">Очистить кэш</button>
     </div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Clear cookies and site data</div>
+        <div class="title">Очистить файлы cookie и данные сайтов</div>
       </div>
-      <button class="btn danger" id="clear-cookies-btn">Clear data</button>
+      <button class="btn danger" id="clear-cookies-btn">Очистить данные</button>
     </div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Clear everything</div>
+        <div class="title">Очистить всё</div>
       </div>
-      <button class="btn danger" id="clear-all-btn">Clear all</button>
+      <button class="btn danger" id="clear-all-btn">Очистить всё</button>
     </div>
   </div>
 
   <div class="section">
-    <div class="section-title">Extensions</div>
+    <div class="section-title">Расширения</div>
     <div class="row">
       <div class="row-label">
-        <div class="title">Manage extensions</div>
+        <div class="title">Управление расширениями</div>
       </div>
-      <button class="btn" id="extensions-link">Open extensions page</button>
+      <button class="btn" id="extensions-link">Открыть страницу расширений</button>
     </div>
   </div>
 </div>
@@ -182,7 +182,7 @@ async function loadSettings() {
   setSelect('setting-notifications', String(notificationsEnabled));
   setSelect('setting-sound', String(soundEnabled));
 
-  let dlPath = 'Default';
+  let dlPath = 'По умолчанию';
   if (all['downloads.path']) {
     dlPath = all['downloads.path'];
   }
@@ -207,66 +207,66 @@ function showToast(msg) {
 
 document.getElementById('setting-onStartup').addEventListener('change', async (e) => {
   await window.browserAPI.settings.set('onStartup.page', e.target.value);
-  showToast('Saved');
+  showToast('Сохранено');
 });
 
 document.getElementById('setting-theme').addEventListener('change', async (e) => {
   await window.browserAPI.settings.set('appearance.theme', e.target.value);
-  showToast('Saved');
+  showToast('Сохранено');
 });
 
 document.getElementById('setting-bookmarks').addEventListener('change', async (e) => {
   await window.browserAPI.settings.set('appearance.showBookmarksBar', e.target.value === 'true');
-  showToast('Saved');
+  showToast('Сохранено');
 });
 
 document.getElementById('setting-ask-download').addEventListener('change', async (e) => {
   await window.browserAPI.settings.set('downloads.askBeforeSave', e.target.value === 'true');
-  showToast('Saved');
+  showToast('Сохранено');
 });
 
 document.getElementById('setting-notifications').addEventListener('change', async (e) => {
   await window.browserAPI.settings.set('notifications.enabled', e.target.value === 'true');
-  showToast('Saved');
+  showToast('Сохранено');
 });
 
 document.getElementById('setting-sound').addEventListener('change', async (e) => {
   await window.browserAPI.settings.set('notifications.soundEnabled', e.target.value === 'true');
-  showToast('Saved');
+  showToast('Сохранено');
 });
 
 document.getElementById('download-path-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.downloads.setPath();
   if (result.success) {
     document.getElementById('download-path-label').textContent = result.path;
-    showToast('Download location saved');
+    showToast('Расположение загрузок сохранено');
   }
 });
 
 document.getElementById('clear-cache-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.settings.clearBrowsingData({ cache: true });
   if (result.success) {
-    showToast('Cache cleared');
+    showToast('Кэш очищен');
   } else {
-    showToast('Failed to clear cache');
+    showToast('Не удалось очистить кэш');
   }
 });
 
 document.getElementById('clear-cookies-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.settings.clearBrowsingData({ cookies: true, localStorage: true });
   if (result.success) {
-    showToast('Data cleared');
+    showToast('Данные очищены');
   } else {
-    showToast('Failed to clear data');
+    showToast('Не удалось очистить данные');
   }
 });
 
 document.getElementById('clear-all-btn').addEventListener('click', async () => {
   const result = await window.browserAPI.settings.clearBrowsingData({ cache: true, cookies: true, localStorage: true });
   if (result.success) {
-    showToast('All browsing data cleared');
+    showToast('Все данные просмотра очищены');
   } else {
-    showToast('Failed to clear data');
+    showToast('Не удалось очистить данные');
   }
 });
 

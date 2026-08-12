@@ -7,7 +7,7 @@ class Tab {
         this.id = id;
         this.view = view;
         this.url = url;
-        this.title = 'New Tab';
+        this.title = 'Новая вкладка';
         this.isLoading = false;
         this.isSelected = false;
     }
@@ -107,30 +107,30 @@ export class TabManager {
         const template = [];
 
         if (tab.view.webContents.navigationHistory.canGoBack()) {
-            template.push({ label: 'Back', click: () => tab.view.webContents.navigationHistory.goBack() });
+            template.push({ label: 'Назад', click: () => tab.view.webContents.navigationHistory.goBack() });
         }
         if (tab.view.webContents.navigationHistory.canGoForward()) {
-            template.push({ label: 'Forward', click: () => tab.view.webContents.navigationHistory.goForward() });
+            template.push({ label: 'Вперёд', click: () => tab.view.webContents.navigationHistory.goForward() });
         }
-        template.push({ label: 'Reload', click: () => tab.view.webContents.reload() });
+        template.push({ label: 'Обновить', click: () => tab.view.webContents.reload() });
 
         if (params.isEditable) {
             template.push({ type: 'separator' });
-            template.push({ label: 'Cut', role: 'cut', enabled: params.editFlags.canCut });
-            template.push({ label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy });
-            template.push({ label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste });
-            template.push({ label: 'Select All', role: 'selectAll', enabled: params.editFlags.canSelectAll });
+            template.push({ label: 'Вырезать', role: 'cut', enabled: params.editFlags.canCut });
+            template.push({ label: 'Копировать', role: 'copy', enabled: params.editFlags.canCopy });
+            template.push({ label: 'Вставить', role: 'paste', enabled: params.editFlags.canPaste });
+            template.push({ label: 'Выделить всё', role: 'selectAll', enabled: params.editFlags.canSelectAll });
         }
 
         if (params.selectionText) {
             template.push({ type: 'separator' });
-            template.push({ label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy });
+            template.push({ label: 'Копировать', role: 'copy', enabled: params.editFlags.canCopy });
         }
 
         if (params.mediaType === 'image') {
             template.push({ type: 'separator' });
             template.push({
-                label: 'Save Image As...',
+                label: 'Сохранить изображение как...',
                 click: () => {
                     if (params.srcURL) {
                         tab.view.webContents.downloadURL(params.srcURL);
@@ -138,7 +138,7 @@ export class TabManager {
                 }
             });
             template.push({
-                label: 'Copy Image',
+                label: 'Копировать изображение',
                 click: () => {
                     if (params.srcURL) {
                         tab.view.webContents.copyImageAt(params.x, params.y);
@@ -149,11 +149,11 @@ export class TabManager {
 
         if (params.linkURL) {
             template.push({ type: 'separator' });
-            template.push({ label: 'Copy Link Address', click: () => this._copyToClipboard(params.linkURL) });
+            template.push({ label: 'Копировать адрес ссылки', click: () => this._copyToClipboard(params.linkURL) });
         }
 
         template.push({ type: 'separator' });
-        template.push({ label: 'Inspect Element', click: () => tab.view.webContents.inspectElement(params.x, params.y) });
+        template.push({ label: 'Исследовать элемент', click: () => tab.view.webContents.inspectElement(params.x, params.y) });
 
         const menu = Menu.buildFromTemplate(template);
         menu.popup({ window: this.mainWindow });
