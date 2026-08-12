@@ -1,5 +1,13 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.3.3 — About (О браузере)
+
+### Completed
+- [x] browser://about: версии (app/Electron/Chromium/Node), ОС, архитектура, User-Agent
+- [x] Проверка обновлений: fetch GitHub releases API, сравнение версий
+- [x] Меню «Справка → О BunPinokWeb» теперь ведёт на browser://about
+- [x] IPC: about:getInfo, about:checkUpdates
+
 ## 2026-08-12 — v0.3.2 — Passwords (Пароли)
 
 ### Completed

@@ -111,5 +111,10 @@ contextBridge.exposeInMainWorld('browserAPI', {
         getAll: () => ipcRenderer.invoke('passwords:getAll'),
         removeByIndex: (index) => ipcRenderer.invoke('passwords:removeByIndex', index),
         clear: () => ipcRenderer.invoke('passwords:clear')
+    },
+
+    about: {
+        getInfo: () => ipcRenderer.invoke('about:getInfo'),
+        checkUpdates: () => ipcRenderer.invoke('about:checkUpdates')
     }
 });

@@ -77,7 +77,8 @@ function setupProtocolHandler() {
             'history': 'pages/history.html',
             'bookmarks': 'pages/bookmarks.html',
             'privacy': 'pages/privacy.html',
-            'passwords': 'pages/passwords.html'
+            'passwords': 'pages/passwords.html',
+            'about': 'pages/about.html'
         };
 
         const filePath = pageMap[pageName];
@@ -536,6 +537,45 @@ function setupIpcHandlers() {
         passwordStore.clear();
         return { success: true };
     });
+
+    ipcMain.handle('about:getInfo', () => {
+        let osName = process.platform;
+        if (process.platform === 'win32') {
+            osName = 'Windows';
+        } else if (process.platform === 'darwin') {
+            osName = 'macOS';
+        } else if (process.platform === 'linux') {
+            osName = 'Linux';
+        }
+        return {
+            appVersion: app.getVersion(),
+            electron: process.versions.electron,
+            chromium: process.versions.chrome,
+            node: process.versions.node,
+            os: osName,
+            arch: process.arch,
+            userAgent: tabManager._getUserAgent()
+        };
+    });
+
+    ipcMain.handle('about:checkUpdates', async () => {
+        try {
+            const response = await fetch('https://api.github.com/repos/pinokio240/BunPinokWeb/releases/latest');
+            if (!response.ok) {
+                return { error: 'HTTP ' + response.status };
+            }
+            const data = await response.json();
+            const latestVersion = data.tag_name || '';
+            const currentVersion = app.getVersion();
+            let updateAvailable = false;
+            if (latestVersion && latestVersion !== currentVersion) {
+                updateAvailable = true;
+            }
+            return { updateAvailable: updateAvailable, latestVersion: latestVersion };
+        } catch (err) {
+            return { error: err.message };
+        }
+    });
 }
 
 function parseUserInput(input) {
@@ -688,7 +728,7 @@ app.whenReady().then(async () => {
         {
             label: 'Справка',
             submenu: [
-                { label: 'О BunPinokWeb', click: () => { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } }
+                { label: 'О BunPinokWeb', click: () => { tabManager.createTab('browser://about'); updateChromeViewBounds(); } }
             ]
         }
     ];

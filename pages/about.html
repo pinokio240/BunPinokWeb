@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>О браузере - BunPinokWeb</title>
+<style>
+:root {
+  --bg: #f1f3f4; --card: #ffffff; --text: #202124; --subtext: #5f6368;
+  --border: #dadce0; --accent: #1a73e8; --accent-hover: #1765cc;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; overflow-y: auto; }
+.container { max-width: 700px; margin: 0 auto; padding: 40px 20px; }
+.back-link { display: inline-block; margin-bottom: 16px; color: var(--accent); text-decoration: none; cursor: pointer; }
+.back-link:hover { text-decoration: underline; }
+.logo-area { text-align: center; margin-bottom: 32px; }
+.logo { font-size: 64px; }
+h1 { font-size: 28px; font-weight: 400; margin-bottom: 4px; }
+.version { color: var(--subtext); margin-bottom: 24px; }
+.card { background: var(--card); border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+.info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.info-row:last-child { border-bottom: none; }
+.info-row .key { color: var(--subtext); }
+.info-row .value { text-align: right; word-break: break-all; max-width: 60%; }
+.btn { padding: 9px 20px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; background: var(--accent); color: white; border-color: var(--accent); }
+.btn:hover { background: var(--accent-hover); }
+.update-status { margin-top: 12px; font-size: 13px; }
+.update-status.ok { color: #188038; }
+.update-status.new { color: var(--accent); }
+.update-status.error { color: #d93025; }
+</style>
+</head>
+<body>
+<div class="container">
+  <a class="back-link" onclick="history.back()">← Назад</a>
+  <div class="logo-area">
+    <div class="logo">🌐</div>
+    <h1>BunPinokWeb</h1>
+    <p class="version" id="app-version">Версия —</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Обновления</div>
+    <button class="btn" id="check-update-btn">Проверить обновления</button>
+    <div class="update-status" id="update-status"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Сведения о системе</div>
+    <div class="info-row"><span class="key">Версия приложения</span><span class="value" id="row-app"></span></div>
+    <div class="info-row"><span class="key">Electron</span><span class="value" id="row-electron"></span></div>
+    <div class="info-row"><span class="key">Chromium</span><span class="value" id="row-chromium"></span></div>
+    <div class="info-row"><span class="key">Node.js</span><span class="value" id="row-node"></span></div>
+    <div class="info-row"><span class="key">Операционная система</span><span class="value" id="row-os"></span></div>
+    <div class="info-row"><span class="key">Архитектура</span><span class="value" id="row-arch"></span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">User-Agent</div>
+    <div class="info-row"><span class="value" id="row-ua" style="max-width:100%"></span></div>
+  </div>
+</div>
+
+<script>
+async function loadInfo() {
+  const info = await window.browserAPI.about.getInfo();
+  document.getElementById('app-version').textContent = 'Версия ' + info.appVersion;
+  document.getElementById('row-app').textContent = info.appVersion;
+  document.getElementById('row-electron').textContent = info.electron;
+  document.getElementById('row-chromium').textContent = info.chromium;
+  document.getElementById('row-node').textContent = info.node;
+  document.getElementById('row-os').textContent = info.os;
+  document.getElementById('row-arch').textContent = info.arch;
+  document.getElementById('row-ua').textContent = info.userAgent;
+}
+
+document.getElementById('check-update-btn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('update-status');
+  statusEl.className = 'update-status';
+  statusEl.textContent = 'Проверка обновлений...';
+  const result = await window.browserAPI.about.checkUpdates();
+  if (result.error) {
+    statusEl.className = 'update-status error';
+    statusEl.textContent = 'Не удалось проверить: ' + result.error;
+    return;
+  }
+  if (result.updateAvailable) {
+    statusEl.className = 'update-status new';
+    statusEl.textContent = 'Доступна новая версия: ' + result.latestVersion;
+  } else {
+    statusEl.className = 'update-status ok';
+    statusEl.textContent = 'У вас последняя версия';
+  }
+});
+
+loadInfo();
+</script>
+</body>
+</html>
