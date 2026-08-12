@@ -1,5 +1,22 @@
 # BunPinokWeb — Project History
 
+## 2026-08-12 — v0.4.7 — Extension Popup Rendering Fix (по исследованию)
+
+### Research findings (web)
+- Electron не имеет встроенного API попапов; правильный путь — chrome-extension:// URL в BrowserWindow
+- Ключ: `enablePreferredSizeMode: true` + событие `preferred-size-changed` (так делает electron-chrome-extensions)
+- Обязательно: та же session, что и у расширения; sandbox: true; contextIsolation: true
+- Рекомендованные флаги окна: parent, movable:false, skipTaskbar, roundedCorners:false, backgroundColor:#ffffff
+- Лимиты размера: 25×25 … 800×600
+
+### Fixes
+- [x] openExtensionPopup: enablePreferredSizeMode + preferred-size-changed (вместо ручного ResizeObserver)
+- [x] session: session.defaultSession явно; sandbox: true; contextIsolation: true
+- [x] Флаги окна как в electron-chrome-extensions
+- [x] URL попапа через new URL() (корректный разбор относительных путей)
+- [x] electron-compat шим инжектится и в HTML попапа/настроек (chrome.* стабы)
+- [x] Удалён popup-preload.js (не нужен)
+
 ## 2026-08-12 — v0.4.6 — Extension Compatibility Layer
 
 ### Problems found (user log)

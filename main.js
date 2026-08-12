@@ -758,15 +758,25 @@ function openExtensionPopup(extId, popupPath, x, y) {
         width: 400,
         height: 300,
         frame: false,
+        parent: mainWindow,
+        movable: false,
+        minimizable: false,
+        maximizable: false,
+        fullscreenable: false,
         resizable: false,
+        skipTaskbar: true,
+        backgroundColor: '#ffffff',
+        roundedCorners: false,
         show: false,
         x: Math.round(x),
         y: Math.round(y),
         webPreferences: {
-            preload: path.join(__dirname, 'src', 'popup-preload.js'),
-            contextIsolation: false,
+            session: session.defaultSession,
+            sandbox: true,
             nodeIntegration: false,
-            sandbox: false
+            nodeIntegrationInWorker: false,
+            contextIsolation: true,
+            enablePreferredSizeMode: true
         }
     });
 
@@ -782,7 +792,25 @@ function openExtensionPopup(extId, popupPath, x, y) {
         }
     });
 
-    const popupUrl = 'chrome-extension://' + extId + '/' + popupPath;
+    win.webContents.on('preferred-size-changed', (_event, size) => {
+        if (win.isDestroyed()) {
+            return;
+        }
+        const safeWidth = Math.min(Math.max(Math.round(size.width), 25), 800);
+        const safeHeight = Math.min(Math.max(Math.round(size.height), 25), 600);
+        const bounds = win.getBounds();
+        win.setBounds({
+            x: bounds.x,
+            y: bounds.y,
+            width: safeWidth,
+            height: safeHeight
+        });
+        if (!win.isVisible()) {
+            win.show();
+        }
+    });
+
+    const popupUrl = new URL(popupPath, 'chrome-extension://' + extId + '/').href;
     win.loadURL(popupUrl).catch((err) => {
         console.error('Не удалось открыть попап расширения:', err);
         if (!win.isDestroyed()) {
@@ -795,27 +823,6 @@ function openExtensionPopup(extId, popupPath, x, y) {
     });
 
     extensionPopupWindows.push(win);
-}
-
-function setupPopupResizeIpc() {
-    ipcMain.on('popup:resize', (event, width, height) => {
-        const win = BrowserWindow.fromWebContents(event.sender);
-        if (!win || win.isDestroyed()) {
-            return;
-        }
-        if (!extensionPopupWindows.includes(win)) {
-            return;
-        }
-        const safeWidth = Math.min(Math.max(Math.round(width), 280), 800);
-        const safeHeight = Math.min(Math.max(Math.round(height), 180), 600);
-        const bounds = win.getBounds();
-        win.setBounds({
-            x: bounds.x,
-            y: bounds.y,
-            width: safeWidth,
-            height: safeHeight
-        });
-    });
 }
 
 function updateChromeViewBounds() {
@@ -934,7 +941,6 @@ app.whenReady().then(async () => {
     Menu.setApplicationMenu(Menu.buildFromTemplate(menuTemplate));
 
     setupIpcHandlers();
-    setupPopupResizeIpc();
 
     mainWindow.on('resize', updateChromeViewBounds);
     updateChromeViewBounds();

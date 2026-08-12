@@ -201,7 +201,58 @@ export function prepareExtensionForElectron(extPath) {
         }
     }
 
+    const htmlFiles = _findHtmlFiles(extPath);
+    for (const htmlFile of htmlFiles) {
+        if (_injectShimIntoHtml(htmlFile)) {
+            changed = true;
+        }
+    }
+
     if (changed) {
         fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+    }
+}
+
+function _findHtmlFiles(dir) {
+    const results = [];
+    const walk = (currentDir) => {
+        let entries = [];
+        try {
+            entries = fs.readdirSync(currentDir, { withFileTypes: true });
+        } catch (err) {
+            return;
+        }
+        for (const entry of entries) {
+            const fullPath = path.join(currentDir, entry.name);
+            if (entry.isDirectory()) {
+                walk(fullPath);
+            } else if (entry.name.toLowerCase().endsWith('.html') || entry.name.toLowerCase().endsWith('.htm')) {
+                results.push(fullPath);
+            }
+        }
+    };
+    walk(dir);
+    return results;
+}
+
+function _injectShimIntoHtml(htmlFile) {
+    try {
+        let html = fs.readFileSync(htmlFile, 'utf-8');
+        if (html.includes('electron-compat.js')) {
+            return false;
+        }
+        const tag = '<script src="electron-compat.js"></script>';
+        const headIndex = html.search(/<head[^>]*>/i);
+        if (headIndex >= 0) {
+            const insertAt = headIndex + html.slice(headIndex).indexOf('>') + 1;
+            html = html.slice(0, insertAt) + tag + html.slice(insertAt);
+        } else {
+            html = tag + html;
+        }
+        fs.writeFileSync(htmlFile, html, 'utf-8');
+        return true;
+    } catch (err) {
+        console.error('Не удалось пропатчить ' + htmlFile + ':', err);
+        return false;
     }
 }
