@@ -1,5 +1,29 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.8.1 — КРИТИЧЕСКИЙ ФИКС: chrome.storage через мост (LOCK-конфликты)
+
+### Диагноз (из свежего лога пользователя)
+- `IO error: .../LOCK: Access denied. (ChromeMethodBFE: 15::LockFile::5)` каждые 2 секунды
+- Каскад: `chrome.storage.local.get` возвращает `undefined` → `TypeError: Cannot read properties of undefined (reading 'player_volume'/'auth')` — VK Music Player мёртв
+
+### Корень
+- `electron-chrome-extensions` **не реализует** storage (в preload только алиас `sync → local`)
+- Реальный `chrome.storage.local` — нативный LevelDB Electron, открывается **в каждом renderer-процессе** (фон + попап + offscreen). На Windows LOCK-файл эксклюзивен → конфликт
+- Плюс не было `app.requestSingleInstanceLock()` — два экземпляра тоже конфликтуют
+
+### Fix
+- [x] `extension-compat.js`: `chrome.storage` (local/sync/session) полностью заменён на мост → HTTP 127.0.0.1:33123 → единый writer в main
+- [x] `dnr-bridge.js`: endpoints `/storage-get/set/remove/clear`, JSON-файлы `userData/extension-storage/<extId>.<area>.json`
+- [x] API: get(string/array/object-with-defaults/null), set, remove, clear, onChanged (в пределах контекста), promise + callback, QUOTA-константы
+- [x] `main.js`: `app.requestSingleInstanceLock()`
+- [x] `extensions.js`: `_wipeExtensionData` чистит и bridge-хранилище
+- [x] **Debug-спам библиотеки**: в `chrome-extension-api.preload.js` зашиты `if (true) { console.log(...) }` на каждый API-вызов (~60% лога!). Патч через `scripts/patch-electron-chrome-extensions.js` + `postinstall`
+- [x] Тотальная проверка кода: все 19 src-модулей + 12 страниц прочитаны. Других критических багов нет. Дубликаты id в HTML — 0, TODO/FIXME — 0, скобки/синтаксис — OK
+
+### Важно пользователю
+- Перезапустить браузер. VK Music Player должен ожить (настройки/токен теперь в bridge-хранилище)
+- При повторном `npm install` патч библиотеки применится автоматически (postinstall)
+
 ## 2026-08-13 — v0.8.0 — Багфиксы, chrome.identity, CSP
 
 ### Аудит реализации (по запросу «проверь сначала реализацию»)
