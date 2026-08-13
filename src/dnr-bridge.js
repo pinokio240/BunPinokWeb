@@ -128,6 +128,12 @@ export class DnrBridge {
         this.identitySeq = 0;
         this.beforeRequestHandlers = [];
         this.beforeSendHeadersHandlers = [];
+        this.beforeRequestHandlers.push((details) => {
+            if (details.url.startsWith('https://cdn.ghostery.com/')) {
+                return { redirectURL: 'https://ghostery-cdn.b-cdn.net/' + details.url.slice('https://cdn.ghostery.com/'.length) };
+            }
+            return null;
+        });
         this.context = null;
         this._startServer();
         this._setupWebRequest();
