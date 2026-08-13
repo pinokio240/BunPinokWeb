@@ -605,6 +605,14 @@ function setupEventListeners() {
       $('#omnibox').focus();
       $('#omnibox').select();
     }
+    if (e.ctrlKey && e.key >= '1' && e.key <= '9') {
+      e.preventDefault();
+      browserAPI.tabs.selectByIndex(parseInt(e.key, 10));
+    }
+    if (e.key === 'F11') {
+      e.preventDefault();
+      browserAPI.window.toggleFullscreen();
+    }
   });
 
   $('#min-btn').addEventListener('click', () => browserAPI.window.minimize());

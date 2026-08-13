@@ -243,22 +243,34 @@ export class TabManager {
     _handleBeforeInput(event, input, tab) {
         const isCtrl = input.control;
         const key = input.key.toLowerCase();
-        if (!isCtrl) {
+        if (!isCtrl && !(input.key === 'F11')) {
             return;
         }
-        if (key === 't') {
+        if (key === 't' && isCtrl) {
             event.preventDefault();
             this.createTab('browser://newtab');
-        } else if (key === 'w') {
+        } else if (key === 'w' && isCtrl) {
             event.preventDefault();
             this.closeTab(tab.id);
             if (this.getTabCount() === 0) {
                 this.createTab('browser://newtab');
             }
-        } else if (key === 'l') {
+        } else if (key === 'l' && isCtrl) {
             event.preventDefault();
             if (this.mainWindow && !this.mainWindow.isDestroyed()) {
                 this.mainWindow.webContents.send('ui:focus-omnibox');
+            }
+        } else if (isCtrl && key >= '1' && key <= '9') {
+            event.preventDefault();
+            const index = parseInt(key, 10);
+            this.selectTabByIndex(index);
+        } else if (isCtrl && input.shift && key === 'i') {
+            event.preventDefault();
+            this.toggleDevTools(tab.id);
+        } else if (input.key === 'F11') {
+            event.preventDefault();
+            if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.setFullScreen(!this.mainWindow.isFullScreen());
             }
         }
     }
@@ -417,6 +429,25 @@ export class TabManager {
         tab.isSelected = true;
         this.activeTabId = tabId;
         this._notifyUpdate();
+    }
+
+    selectTabByIndex(index) {
+        const all = this.getAllTabs();
+        if (index >= 1 && index <= all.length) {
+            this.selectTab(all[index - 1].id);
+        }
+    }
+
+    toggleDevTools(tabId) {
+        const tab = this.tabs.get(tabId);
+        if (!tab) {
+            return;
+        }
+        if (tab.view.webContents.isDevToolsOpened()) {
+            tab.view.webContents.closeDevTools();
+        } else {
+            tab.view.webContents.openDevTools({ mode: 'detach' });
+        }
     }
 
     navigateTab(tabId, url) {

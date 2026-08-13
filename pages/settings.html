@@ -384,6 +384,50 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
         </div>
       </div>
       <div class="section">
+        <div class="section-title">Защита</div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">Блокировка рекламы</div>
+            <div class="desc">Блокировать рекламные домены и запросы</div>
+          </div>
+          <select id="privacy-adblock">
+            <option value="true">Вкл.</option>
+            <option value="false">Выкл.</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">Уровень блокировки рекламы</div>
+          </div>
+          <select id="privacy-adblocklevel">
+            <option value="basic">Базовый</option>
+            <option value="standard">Стандартный</option>
+            <option value="aggressive">Агрессивный</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">Защита от отслеживания</div>
+            <div class="desc">Блокировать трекеры аналитики и рекламных сетей</div>
+          </div>
+          <select id="privacy-tracking">
+            <option value="off">Выкл.</option>
+            <option value="balanced">Сбалансированная</option>
+            <option value="strict">Строгая</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">HTTPS-Only</div>
+            <div class="desc">Принудительно использовать HTTPS для VK-доменов</div>
+          </div>
+          <select id="privacy-httpsonly">
+            <option value="true">Вкл.</option>
+            <option value="false">Выкл.</option>
+          </select>
+        </div>
+      </div>
+      <div class="section">
         <div class="section-title">Данные</div>
         <div class="row">
           <div class="row-label">
@@ -594,6 +638,24 @@ async function loadSettings() {
   setSelect('privacy-popups', all['privacy.popups'] || 'block');
   updateDntToggle(all['privacy.dnt'] === true);
 
+  let adblock = all['privacy.adblock'] !== false;
+  setSelect('privacy-adblock', String(adblock));
+
+  let adblockLevel = 'standard';
+  if (all['privacy.adblockLevel']) {
+    adblockLevel = all['privacy.adblockLevel'];
+  }
+  setSelect('privacy-adblocklevel', adblockLevel);
+
+  let tracking = 'balanced';
+  if (all['privacy.tracking']) {
+    tracking = all['privacy.tracking'];
+  }
+  setSelect('privacy-tracking', tracking);
+
+  let httpsOnly = all['privacy.httpsOnly'] !== false;
+  setSelect('privacy-httpsonly', String(httpsOnly));
+
   let hwAccel = all['system.hardwareAcceleration'] !== false;
   setSelect('setting-hwaccel', String(hwAccel));
 
@@ -692,6 +754,10 @@ bindChange('privacy-geolocation', 'privacy.geolocation');
 bindChange('privacy-camera', 'privacy.camera');
 bindChange('privacy-microphone', 'privacy.microphone');
 bindChange('privacy-popups', 'privacy.popups');
+bindChange('privacy-adblock', 'privacy.adblock', 'bool');
+bindChange('privacy-adblocklevel', 'privacy.adblockLevel');
+bindChange('privacy-tracking', 'privacy.tracking');
+bindChange('privacy-httpsonly', 'privacy.httpsOnly', 'bool');
 
 bindChange('autofill-name', 'autofill.name', 'trim');
 bindChange('autofill-email', 'autofill.email', 'trim');

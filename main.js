@@ -32,6 +32,7 @@ import { CrxInstaller } from './src/crx-installer.js';
 import { XpiConverter } from './src/xpi-converter.js';
 import { SessionStore } from './src/session-store.js';
 import { DnrBridge } from './src/dnr-bridge.js';
+import { PrivacyShield } from './src/privacy-shield.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -50,6 +51,7 @@ let crxInstaller = null;
 let xpiConverter = null;
 let sessionStore = null;
 let dnrBridge = null;
+let privacyShield = null;
 let bookmarksBarVisible = false;
 const readerContent = new Map();
 
@@ -108,7 +110,7 @@ function readHardwareAccelerationSetting() {
 readHardwareAccelerationSetting();
 
 function createMainWindow() {
-    mainWindow = new BrowserWindow({
+    const windowOptions = {
         width: settingsStore.get('window.width', 1280),
         height: settingsStore.get('window.height', 800),
         minWidth: 800,
@@ -121,7 +123,18 @@ function createMainWindow() {
             nodeIntegration: false,
             sandbox: false
         }
-    });
+    };
+    const savedX = settingsStore.get('window.x');
+    const savedY = settingsStore.get('window.y');
+    if (typeof savedX === 'number' && typeof savedY === 'number') {
+        windowOptions.x = savedX;
+        windowOptions.y = savedY;
+    }
+    mainWindow = new BrowserWindow(windowOptions);
+
+    if (settingsStore.get('window.isMaximized', false) === true) {
+        mainWindow.maximize();
+    }
 
     mainWindow.loadFile('pages/browser-chrome.html');
 
@@ -129,6 +142,26 @@ function createMainWindow() {
         const [width, height] = mainWindow.getSize();
         settingsStore.set('window.width', width);
         settingsStore.set('window.height', height);
+    });
+
+    let moveSaveTimer = null;
+    mainWindow.on('move', () => {
+        if (moveSaveTimer) {
+            clearTimeout(moveSaveTimer);
+        }
+        moveSaveTimer = setTimeout(() => {
+            const [x, y] = mainWindow.getPosition();
+            settingsStore.set('window.x', x);
+            settingsStore.set('window.y', y);
+        }, 500);
+    });
+
+    mainWindow.on('maximize', () => {
+        settingsStore.set('window.isMaximized', true);
+    });
+
+    mainWindow.on('unmaximize', () => {
+        settingsStore.set('window.isMaximized', false);
     });
 
     mainWindow.on('closed', () => {
@@ -358,6 +391,11 @@ function setupIpcHandlers() {
             return { success: true };
         }
         return { success: false };
+    });
+
+    ipcMain.handle('tab:selectByIndex', (_event, index) => {
+        tabManager.selectTabByIndex(index);
+        return { success: true };
     });
 
     ipcMain.handle('window:minimize', () => {
@@ -823,6 +861,13 @@ function setupIpcHandlers() {
         }
         return content || null;
     });
+
+    ipcMain.handle('privacyShield:getStats', () => {
+        return {
+            stats: privacyShield.getStats(),
+            recent: privacyShield.getRecentBlocked()
+        };
+    });
 }
 
 function parseUserInput(input) {
@@ -1022,6 +1067,8 @@ app.whenReady().then(async () => {
     bookmarkStore = new BookmarkStore();
     sessionStore = new SessionStore();
     dnrBridge = new DnrBridge();
+    privacyShield = new PrivacyShield(settingsStore);
+    privacyShield.setup(session.defaultSession);
     permissionDialogManager = new PermissionDialogManager();
     passwordStore = new PasswordStore();
     authDialogManager = new AuthDialogManager();

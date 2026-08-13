@@ -1,5 +1,16 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.0 — PinokWeb Borrows: Privacy Shield + Shortcuts + WindowState
+
+### Позаимствовано из C:\Users\Pinokio240\Desktop\PinokWeb
+- [x] src/privacy-shield.js: адблок (домены VK/Yandex/Google Ads + паттерны, 3 уровня) + трекеры (balanced/strict, списки из PinokWeb) + HTTPS-only (VK-домены)
+- [x] Настройки: секция «Защита» в Конфиденциальности (адблок, уровень, трекеры, HTTPS-Only)
+- [x] Хоткеи: Ctrl+1..9 переключение вкладок, F11 полноэкранный, Ctrl+Shift+I DevTools (из ShortcutManager)
+- [x] WindowState: сохранение позиции окна (debounce 500ms) + isMaximized (из WindowStateManager)
+- [x] tab:selectByIndex IPC, toggleDevTools
+
+### План: electron-chrome-extensions (GPL-3) — следующий шаг
+
 ## 2026-08-13 — v0.5.8 — Firewall Resolution
 
 ### Итог расследования

@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
         goForward: (tabId) => ipcRenderer.invoke('tab:goForward', tabId),
         reload: (tabId) => ipcRenderer.invoke('tab:reload', tabId),
         stop: (tabId) => ipcRenderer.invoke('tab:stop', tabId),
+        selectByIndex: (index) => ipcRenderer.invoke('tab:selectByIndex', index),
         onUpdated: (callback) => {
             ipcRenderer.on('tabs:updated', (_event, tabs) => callback(tabs));
         }
@@ -138,5 +139,9 @@ contextBridge.exposeInMainWorld('browserAPI', {
         open: (tabId) => ipcRenderer.invoke('reader:open', tabId),
         openActive: () => ipcRenderer.invoke('reader:openActive'),
         getContent: () => ipcRenderer.invoke('reader:getContent')
+    },
+
+    privacyShield: {
+        getStats: () => ipcRenderer.invoke('privacyShield:getStats')
     }
 });
