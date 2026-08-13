@@ -1008,7 +1008,9 @@ export class DnrBridge {
             });
             this.rules.push(rule);
         }
-        console.log('DNR мост: правил активных — ' + this.rules.length);
+        if (this.logger) {
+            this.logger.info('dnr', 'DNR-правила расширения обновлены: активных правил — ' + this.rules.length);
+        }
     }
 
     _registerWebRequestListener(payload) {
@@ -1177,6 +1179,7 @@ export class DnrBridge {
                 }
             }
             const applyDnrPass = (builtinOnly) => {
+                let matched = false;
                 for (const rule of this.rules) {
                     if (builtinOnly && rule.id < 9000) {
                         continue;
@@ -1187,6 +1190,7 @@ export class DnrBridge {
                     if (!this._matches(details, rule.condition)) {
                         continue;
                     }
+                    matched = true;
                     if (rule.id >= 9000 && this.logger && !this._dnrLogged.has(details.url) && this._dnrLogged.size < 50) {
                         this._dnrLogged.add(details.url);
                         this.logger.info('dnr', 'Правило VK применено к ' + details.url.slice(0, 140));
@@ -1208,9 +1212,12 @@ export class DnrBridge {
                         }
                     }
                 }
+                return matched;
             };
-            applyDnrPass(false);
-            applyDnrPass(true);
+            const extensionRuleMatched = applyDnrPass(false);
+            if (!extensionRuleMatched) {
+                applyDnrPass(true);
+            }
             if (this.wrListeners.length === 0) {
                 callback({ requestHeaders: headers });
                 return;
