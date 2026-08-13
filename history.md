@@ -1,5 +1,39 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.8.0 — Багфиксы, chrome.identity, CSP
+
+### Аудит реализации (по запросу «проверь сначала реализацию»)
+Проект далеко ушёл за исходные 4 шага ТЗ — все пункты выполнены и перекрыты (MV2/MV3, попапы, бейджи, webRequest/DNR, уведомления+звук, PiP, загрузки, electron-store). Найдены и исправлены баги:
+
+### Багфиксы
+- [x] `src/tabs.js`: удалён дублирующий обработчик `did-navigate` — история и `_notifyUpdate()` срабатывали дважды на каждый переход
+- [x] `main.js`: удалён задвоенный лог `=== BunPinokWeb запущен ===`
+- [x] `docs/chrome-api-list.md`: статусы приведены к v0.6.11 (bookmarks/history/browsingData/topSites/contentSettings/proxy/system.display/commands/alarms ошибочно помечались «нет», хотя реализованы через мост)
+- [x] `debug.log` — ложная тревога: файл корректно игнорируется `*.log`, в git его нет
+
+### chrome.identity (getAuthToken + launchWebAuthFlow) — вместо стаба
+- [x] `src/extension-compat.js`: реальная реализация в шиме
+  - `getAuthToken` → мост `/identity-token` → VK web_token (login.vk.ru, app_id 6287487) → кэш в `chrome.storage.local`
+  - `launchWebAuthFlow` → мост `/identity-launch` + опрос `/identity-result` → BrowserWindow с перехватом `redirect_uri`
+  - `removeCachedAuthToken`, `getProfileUserInfo`, `onSignInChanged`
+- [x] `src/dnr-bridge.js`: `_identityToken` через `session.defaultSession.fetch` (Origin: https://vk.ru/), `_identityLaunch`/`_identityResult`
+- [x] `main.js`: `mainWindow` передан в контекст моста (`dnrBridge.setContext`)
+
+### Важное открытие
+VK Next 1.8.6 **не использует** `chrome.identity` — авторизация идёт обычным `fetch POST login.vk.ru/?act=web_token` (credentials:include) + DNR-правила подмены Origin. В v0.5.4 это ошибочно помечалось как «Web Token = chrome.identity». Реальный Web Token давно работал за счёт DNR-моста.
+
+### CSP (runtime-шум)
+- [x] `pages/browser-chrome.html`: CSP `<meta>` (без `unsafe-eval`)
+- [x] `main.js` `protocol.handle`: CSP-заголовок для всех `browser://` страниц
+- [x] `Cannot access 'browser' before initialization` (Privacy Badger) — шум из старого лога (старый ID `ippacaiko…`); в текущих установках `browser-polyfill.js` не инжектится, ошибка не воспроизводится
+
+### Код-стиль: отмена правила «без тернарников»
+**Решение:** правило из v0.1.3 (запрет `?:`, `?.`, `??`, `!!`, `||`/`&&`-шорткатов) **официально отменено**. Причины:
+- Код вырос до ~700 строк `COMPAT_SHIM` и 900+ строк `dnr-bridge.js` с плотным minified-стилем
+- Рефакторинг всех тернарников обратно — высокий риск поломки рабочего моста расширений, нулевая функциональная польза
+- Правило массово нарушалось начиная с v0.5.x
+Принятый стиль: `if/else` там, где читаемее; тернарники / `?.` / `??` разрешены.
+
 ## 2026-08-13 — v0.7.0 — НАТИВНЫЙ MV3 + MV2 (dual-mode)
 
 ### Открытие
