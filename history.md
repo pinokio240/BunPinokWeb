@@ -1,5 +1,24 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.10 — VK Music Player: Full API Map + Autoplay Fix
+
+### Study (полный скан 3.3MB JS)
+| API | Uses | Статус |
+|---|---|---|
+| chrome.runtime | 20 | ✓ + shim (getContexts/ContextType) |
+| chrome.action | 8 | ✓ библиотека |
+| chrome.offscreen | 4 | ✓ shim (Reason/getContexts) |
+| chrome.cast | 8 | ✅ стаб isAvailable=false |
+| chrome.webview.hostObjects | 1 | ✓ не критично (Xbox-детект) |
+| chrome.commands | 1 | ✓ стаб |
+| new Audio/AudioContext | 32 | **✅ autoplay fix** |
+| navigator.mediaSession | 9 | частично |
+| fetch/XHR | 54 | ✓ |
+
+### Critical fix
+- [x] **autoplayPolicy: 'no-user-gesture-required'** в offscreen-окне и попапе — Chromium блокировал автовоспроизведение аудио в скрытом окне!
+- [x] chrome.cast стаб
+
 ## 2026-08-13 — v0.6.9 — Privacy Badger: Full Chrome API Bridge
 
 ### Study (Privacy Badger AMO)

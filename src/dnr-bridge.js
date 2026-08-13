@@ -187,7 +187,8 @@ export class DnrBridge {
                     session: session.defaultSession,
                     sandbox: true,
                     contextIsolation: true,
-                    nodeIntegration: false
+                    nodeIntegration: false,
+                    autoplayPolicy: 'no-user-gesture-required'
                 }
             });
             win.webContents.setAudioMuted(false);

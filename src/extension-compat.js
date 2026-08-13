@@ -393,6 +393,16 @@ const COMPAT_SHIM = `(function () {
             }).catch(function () {});
         }, 60);
     }
+    if (!chrome.cast) {
+        chrome.cast = {
+            isAvailable: false,
+            initialize: function (apiConfig, onSuccess, onError) { if (onError) { onError('chrome.cast не поддерживается'); } },
+            requestSession: function (onSuccess, onError) { if (onError) { onError('chrome.cast не поддерживается'); } },
+            SessionRequest: function () { },
+            ApiConfig: function () { },
+            SessionStatus: { STARTED: 'started', STOPPED: 'stopped' }
+        };
+    }
     if (!chrome.runtime.getContexts) {        chrome.runtime.getContexts = function (filter) {
             const extId = chrome.runtime.id;
             return fetch('http://127.0.0.1:33123/offscreen-has', {

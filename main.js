@@ -987,7 +987,8 @@ function openExtensionPopup(extId, popupPath, x, y) {
             nodeIntegration: false,
             nodeIntegrationInWorker: false,
             contextIsolation: true,
-            enablePreferredSizeMode: true
+            enablePreferredSizeMode: true,
+            autoplayPolicy: 'no-user-gesture-required'
         }
     });
 
