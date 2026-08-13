@@ -123,6 +123,9 @@ function injectKeyIntoManifest(targetDir, publicKey) {
             return;
         }
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+        if (manifest.key) {
+            return;
+        }
         manifest.key = publicKey.toString('base64');
         fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
     } catch (err) {

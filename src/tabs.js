@@ -62,7 +62,7 @@ export class TabManager {
         this.defaultFontSize = size;
     }
 
-    _buildViewOptions() {
+    _buildViewOptions(url) {
         const options = {};
         for (const key of Object.keys(this.chromeViewOptions)) {
             options[key] = this.chromeViewOptions[key];
@@ -72,12 +72,16 @@ export class TabManager {
             options.webPreferences[key] = this.chromeViewOptions.webPreferences[key];
         }
         options.webPreferences.defaultFontSize = this.defaultFontSize;
+        if (url && url.startsWith('chrome-extension://')) {
+            delete options.webPreferences.preload;
+            options.webPreferences.sandbox = true;
+        }
         return options;
     }
 
     createTab(url = 'browser://newtab') {
         const id = nextTabId++;
-        const view = new WebContentsView(this._buildViewOptions());
+        const view = new WebContentsView(this._buildViewOptions(url));
         view.setBackgroundColor('#ffffff');
         view.webContents.setZoomFactor(this.pageZoomFactor);
 
