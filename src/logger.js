@@ -22,7 +22,14 @@ export class Logger {
     }
 
     log(level, source, message) {
-        const line = '[' + new Date().toISOString() + '] [' + level.toUpperCase() + '] [' + source + '] ' + message;
+        const now = new Date();
+        const pad = function (num, len) {
+            return String(num).padStart(len, '0');
+        };
+        const stamp = now.getFullYear() + '-' + pad(now.getMonth() + 1, 2) + '-' + pad(now.getDate(), 2) +
+            'T' + pad(now.getHours(), 2) + ':' + pad(now.getMinutes(), 2) + ':' + pad(now.getSeconds(), 2) +
+            '.' + pad(now.getMilliseconds(), 3);
+        const line = '[' + stamp + '] [' + level.toUpperCase() + '] [' + source + '] ' + message;
         console.log(line);
         try {
             fs.appendFileSync(this.logPath, line + '\n', 'utf-8');
