@@ -754,7 +754,7 @@ function convertLoaderImports(scriptPath) {
     }
 }
 
-export function prepareExtensionForElectron(extPath) {
+export function prepareExtensionForElectron(extPath, mode) {
     const manifestPath = path.join(extPath, 'manifest.json');
     if (!fs.existsSync(manifestPath)) {
         return;
@@ -762,26 +762,42 @@ export function prepareExtensionForElectron(extPath) {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
     let changed = false;
 
-    if (Array.isArray(manifest.permissions)) {
-        const filtered = manifest.permissions.filter((permission) => {
-            return !UNKNOWN_PERMISSIONS.includes(permission);
-        });
-        if (filtered.length !== manifest.permissions.length) {
-            manifest.permissions = filtered;
-            changed = true;
-        }
+    const shimPath = path.join(extPath, 'electron-compat.js');
+    if (!fs.existsSync(shimPath)) {
+        fs.writeFileSync(shimPath, COMPAT_SHIM, 'utf-8');
     }
 
-    if (Array.isArray(manifest.host_permissions)) {
-        const filtered = manifest.host_permissions.filter((permission) => {
-            return !UNKNOWN_PERMISSIONS.includes(permission);
-        });
-        if (filtered.length !== manifest.host_permissions.length) {
-            manifest.host_permissions = filtered;
-            changed = true;
+    if (manifest.manifest_version === 3 && mode !== 'mv2') {
+        // ── НАТИВНЫЙ MV3 (без даунгрейда) ──
+        if (manifest.background && typeof manifest.background.service_worker === 'string') {
+            const worker = manifest.background.service_worker;
+            const wrapperName = 'bunpinok-sw-wrapper.js';
+            const wrapperPath = path.join(extPath, wrapperName);
+            const wrapperContent = "importScripts('electron-compat.js');\nimportScripts('" + worker + "');\n";
+            const existing = fs.existsSync(wrapperPath) ? fs.readFileSync(wrapperPath, 'utf-8') : '';
+            if (existing !== wrapperContent) {
+                fs.writeFileSync(wrapperPath, wrapperContent, 'utf-8');
+            }
+            if (manifest.background.service_worker !== wrapperName) {
+                manifest.background.service_worker = wrapperName;
+                changed = true;
+            }
         }
+
+        const htmlFiles = _findHtmlFiles(extPath);
+        for (const htmlFile of htmlFiles) {
+            if (_injectShimIntoHtml(htmlFile)) {
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+        }
+        return;
     }
 
+    // ── MV2 (родной MV2 или принудительный fallback) ──
     if (manifest.manifest_version === 3 && manifest.background && typeof manifest.background.service_worker === 'string') {
         const worker = manifest.background.service_worker;
         delete manifest.background.service_worker;
@@ -792,6 +808,16 @@ export function prepareExtensionForElectron(extPath) {
 
         if (manifest.background && manifest.background.type) {
             delete manifest.background.type;
+        }
+    }
+
+    if (Array.isArray(manifest.permissions)) {
+        const filtered = manifest.permissions.filter((permission) => {
+            return !UNKNOWN_PERMISSIONS.includes(permission);
+        });
+        if (filtered.length !== manifest.permissions.length) {
+            manifest.permissions = filtered;
+            changed = true;
         }
     }
 
@@ -856,11 +882,6 @@ export function prepareExtensionForElectron(extPath) {
         manifest.browser_action = manifest.action;
         delete manifest.action;
         changed = true;
-    }
-
-    const shimPath = path.join(extPath, 'electron-compat.js');
-    if (!fs.existsSync(shimPath)) {
-        fs.writeFileSync(shimPath, COMPAT_SHIM, 'utf-8');
     }
 
     if (manifest.background && Array.isArray(manifest.background.scripts)) {

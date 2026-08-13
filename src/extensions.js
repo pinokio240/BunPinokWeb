@@ -161,11 +161,22 @@ export class ExtensionManager {
         if (!fs.existsSync(manifestPath)) {
             throw new Error('Нет manifest.json в ' + extPath);
         }
-        prepareExtensionForElectron(extPath);
+        prepareExtensionForElectron(extPath, 'native');
+        let ext = null;
+        try {
+            ext = await session.defaultSession.extensions.loadExtension(extPath, {
+                allowFileAccess: true
+            });
+        } catch (nativeErr) {
+            if (this.logger) {
+                this.logger.warn('extensions', 'Нативный MV3 не загрузился (' + nativeErr.message + '), пробуем MV2...');
+            }
+            prepareExtensionForElectron(extPath, 'mv2');
+            ext = await session.defaultSession.extensions.loadExtension(extPath, {
+                allowFileAccess: true
+            });
+        }
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-        const ext = await session.defaultSession.extensions.loadExtension(extPath, {
-            allowFileAccess: true
-        });
 
         const name = resolveLocalizedString(manifest.name, manifest, extPath);
         const description = resolveLocalizedString(manifest.description, manifest, extPath);
@@ -234,12 +245,22 @@ export class ExtensionManager {
         if (!fs.existsSync(manifestPath)) {
             throw new Error('Нет manifest.json в выбранной папке');
         }
-        prepareExtensionForElectron(extPath);
+        prepareExtensionForElectron(extPath, 'native');
+        let ext = null;
+        try {
+            ext = await session.defaultSession.extensions.loadExtension(extPath, {
+                allowFileAccess: true
+            });
+        } catch (nativeErr) {
+            if (this.logger) {
+                this.logger.warn('extensions', 'Нативный MV3 не загрузился (' + nativeErr.message + '), пробуем MV2...');
+            }
+            prepareExtensionForElectron(extPath, 'mv2');
+            ext = await session.defaultSession.extensions.loadExtension(extPath, {
+                allowFileAccess: true
+            });
+        }
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-
-        const ext = await session.defaultSession.extensions.loadExtension(extPath, {
-            allowFileAccess: true
-        });
 
         const name = resolveLocalizedString(manifest.name, manifest, extPath);
         const description = resolveLocalizedString(manifest.description, manifest, extPath);

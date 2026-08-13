@@ -1,5 +1,19 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.7.0 — НАТИВНЫЙ MV3 + MV2 (dual-mode)
+
+### Открытие
+- electron-chrome-extensions v4.9.0 ПОДДЕРЖИВАЕТ MV3 service workers (session.serviceWorkers + crx-msg роутинг) — проверено в dist/cjs/index.js
+- Раньше даунгрейд MV3→MV2 ломал расширения (event pages не стартуют в Electron)
+
+### Реализация
+- [x] prepareExtensionForElectron(extPath, mode): 'native' (MV3 без изменений) | 'mv2' (fallback)
+- [x] MV3 SW: wrapper bunpinok-sw-wrapper.js (importScripts electron-compat.js + original SW)
+- [x] MV3: permissions НЕ фильтруются (valid MV3), action/host_permissions остаются как есть
+- [x] Шим в HTML (popup) для MV3
+- [x] loadExtension/_loadFromPath: native → при ошибке автоматический fallback на MV2
+- [x] MV2 режим: persistent: true (event pages не работают), все прежние конверсии
+
 ## 2026-08-13 — v0.6.11 — Massive Chrome API Implementation
 
 ### Реализовано (по карте docs/chrome-api-list.md)
