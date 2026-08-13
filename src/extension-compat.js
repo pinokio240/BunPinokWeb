@@ -361,6 +361,12 @@ const COMPAT_SHIM = `(function () {
             getSessionRules: dnrGet,
             setExtensionActionOptions: function (options, cb) { if (cb) { cb(); } }
         };
+        try {
+            const staticRules = globalThis.__BUNPINOK_STATIC_DNR_RULES;
+            if (staticRules && staticRules.length) {
+                dnrUpdate({ addRules: staticRules, removeRuleIds: [] });
+            }
+        } catch (err) { }
     }
     if (!chrome.downloads) {        const downloadsEvent = function () {
             return { addListener: function () {}, removeListener: function () {}, hasListener: function () { return false; } };
@@ -995,10 +1001,36 @@ export function prepareExtensionForElectron(extPath, mode) {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
     let changed = false;
 
+    const staticRules = [];
+    if (manifest.declarative_net_request) {
+        const resources = manifest.declarative_net_request.rule_resources || [];
+        for (const res of resources) {
+            try {
+                if (!res || !res.path) {
+                    continue;
+                }
+                const content = JSON.parse(fs.readFileSync(path.join(extPath, res.path), 'utf-8'));
+                if (Array.isArray(content)) {
+                    for (const rule of content) {
+                        staticRules.push(rule);
+                    }
+                }
+            } catch (err) {
+                // правила не прочитаны — пропускаем
+            }
+        }
+        delete manifest.declarative_net_request;
+        changed = true;
+    }
+
     const shimPath = path.join(extPath, 'electron-compat.js');
+    let shimContentToWrite = COMPAT_SHIM;
+    if (staticRules.length > 0) {
+        shimContentToWrite = COMPAT_SHIM + '\n;globalThis.__BUNPINOK_STATIC_DNR_RULES = ' + JSON.stringify(staticRules) + ';\n';
+    }
     const existingShim = fs.existsSync(shimPath) ? fs.readFileSync(shimPath, 'utf-8') : '';
-    if (existingShim !== COMPAT_SHIM) {
-        fs.writeFileSync(shimPath, COMPAT_SHIM, 'utf-8');
+    if (existingShim !== shimContentToWrite) {
+        fs.writeFileSync(shimPath, shimContentToWrite, 'utf-8');
     }
 
     if (manifest.manifest_version === 3 && mode !== 'mv2') {
