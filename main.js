@@ -1101,8 +1101,8 @@ app.whenReady().then(async () => {
         openReader(tabId);
     });
     extensionManager = new ExtensionManager(tabManager);
-    crxInstaller = new CrxInstaller(extensionManager);
     xpiConverter = new XpiConverter();
+    crxInstaller = new CrxInstaller(extensionManager, xpiConverter);
 
     chromeExtensions = new ElectronChromeExtensions({
         license: 'GPL-3.0',

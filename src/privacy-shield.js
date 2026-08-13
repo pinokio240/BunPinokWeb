@@ -1,10 +1,24 @@
 const AD_DOMAINS = [
     'ad.mail.ru', 'ads.vk.ru', 'vk-ads.net',
-    'adman.vk.ru', 'ad.vkvideo.ru',
-    'an.yandex.ru', 'mc.yandex.ru',
+    'adman.vk.ru', 'ad.vkvideo.ru', 'ads.vk.com', 'ad.vk.com',
+    'an.yandex.ru', 'mc.yandex.ru', 'yabs.yandex.ru',
     'googleads.g.doubleclick.net',
     'pagead2.googlesyndication.com',
-    'adfox.yandex.ru'
+    'adfox.yandex.ru', 'adfox.ru',
+    'adriver.ru',
+    'adnxs.com',
+    'criteo.com', 'criteo.net',
+    'rubiconproject.com',
+    'pubmatic.com',
+    'openx.net',
+    'smartadserver.com',
+    'doubleverify.com',
+    'adtech.yandex.ru',
+    'awaps.yandex.ru',
+    'advertising.com',
+    'moatads.com',
+    'adservice.google.com',
+    'googleadservices.com'
 ];
 
 const AD_URL_PATTERNS = [

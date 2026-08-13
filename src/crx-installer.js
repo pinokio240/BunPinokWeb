@@ -24,8 +24,9 @@ function getZipStart(buffer) {
 }
 
 export class CrxInstaller {
-    constructor(extensionManager) {
+    constructor(extensionManager, xpiConverter) {
         this.extensionManager = extensionManager;
+        this.xpiConverter = xpiConverter;
     }
 
     _installedDir() {
@@ -38,6 +39,9 @@ export class CrxInstaller {
 
     detectSource(input) {
         const trimmed = input.trim();
+        if (trimmed.includes('addons.mozilla.org')) {
+            return { type: 'amo', slug: this._extractAmoSlug(trimmed) };
+        }
         if (trimmed.includes('chromewebstore.google.com')) {
             return { type: 'chrome', id: this._extractId(trimmed) };
         }
@@ -54,6 +58,14 @@ export class CrxInstaller {
             return { type: 'chrome', id: trimmed };
         }
         return { type: 'unknown', id: '' };
+    }
+
+    _extractAmoSlug(url) {
+        const match = url.match(/\/addon\/([a-zA-Z0-9\-]+)/i);
+        if (match) {
+            return match[1];
+        }
+        return '';
     }
 
     _extractId(url) {
@@ -124,7 +136,10 @@ export class CrxInstaller {
     async installFromUrl(url) {
         const source = this.detectSource(url);
         if (source.type === 'unknown') {
-            throw new Error('Не удалось распознать источник. Вставьте ссылку из Chrome Web Store, Edge Add-ons, Opera Addons или ID расширения (32 символа).');
+            throw new Error('Не удалось распознать источник. Вставьте ссылку из Chrome Web Store, Edge Add-ons, Opera Addons, addons.mozilla.org (Firefox) или ID расширения (32 символа).');
+        }
+        if (source.type === 'amo') {
+            return await this._installFromAmo(source);
         }
         if (source.type === 'chrome' && !source.id) {
             throw new Error('Не найден ID расширения в ссылке');
@@ -150,6 +165,45 @@ export class CrxInstaller {
         const manifestPath = path.join(targetDir, 'manifest.json');
         if (!fs.existsSync(manifestPath)) {
             throw new Error('В архиве нет manifest.json');
+        }
+
+        const extId = await this.extensionManager.loadExtension(targetDir);
+        return { id: extId, path: targetDir };
+    }
+
+    async _installFromAmo(source) {
+        if (!source.slug) {
+            throw new Error('Не найден идентификатор расширения в ссылке AMO');
+        }
+        const apiUrl = 'https://addons.mozilla.org/api/v5/addons/addon/' + source.slug + '/';
+        const apiResponse = await fetch(apiUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+                'Accept-Language': 'ru,en;q=0.8'
+            }
+        });
+        if (!apiResponse.ok) {
+            throw new Error('Расширение не найдено на addons.mozilla.org: HTTP ' + apiResponse.status);
+        }
+        const apiData = await apiResponse.json();
+        const xpiUrl = apiData.current_version && apiData.current_version.file ? apiData.current_version.file.url : '';
+        if (!xpiUrl) {
+            throw new Error('Не удалось получить ссылку на XPI-файл');
+        }
+        const buffer = await this._downloadBuffer(xpiUrl);
+
+        const tempPath = path.join(app.getPath('temp'), 'amo-' + source.slug + '-' + Date.now() + '.xpi');
+        fs.writeFileSync(tempPath, buffer);
+
+        const targetDir = path.join(this._installedDir(), 'amo-' + source.slug);
+        try {
+            this.xpiConverter.convert(tempPath, targetDir);
+        } finally {
+            try {
+                fs.unlinkSync(tempPath);
+            } catch (cleanupErr) {
+                console.error('Не удалось удалить временный XPI:', cleanupErr);
+            }
         }
 
         const extId = await this.extensionManager.loadExtension(targetDir);

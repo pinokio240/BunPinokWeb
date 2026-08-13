@@ -1,5 +1,15 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.2 — AMO (Firefox) Store Install + Adblock Expansion
+
+### Completed
+- [x] Установка из addons.mozilla.org: API v5 → XPI URL → скачивание → XPI-конвертер → загрузка
+- [x] detectSource: amo (слаг из /addon/<slug>/)
+- [x] Расширен список рекламных доменов (VK/Yandex/Google/RU-сети/глобальные SSP)
+
+### Примечание
+- Шелл-процессы блокируются фаерволом (EACCES к CDN) — скачивание идёт в процессе браузера
+
 ## 2026-08-13 — v0.6.1 — electron-chrome-extensions (GPL-3.0)
 
 ### Решение
