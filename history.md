@@ -1,5 +1,20 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.5.5 — DNR Bridge (declarativeNetRequest)
+
+### Research (код VK Next)
+- Web Token: POST login.vk.com/?act=web_token, но РАБОТАЕТ за счёт DNR-правил modifyHeaders
+- Правила подменяют Origin: https://vk.com и удаляют Referer для login/oauth/api.vk.com
+- Без DNR Origin уходит chrome-extension:// → VK отклоняет запрос
+- Плюс правила для api.telegram.org, api.genius.com, yandex, wikipedia (Referer/Origin)
+
+### Implementation
+- [x] src/dnr-bridge.js: локальный HTTP-сервер 127.0.0.1:33123 + webRequest перехват
+- [x] updateDynamicRules/updateSessionRules в шиме POST-ят правила в мост
+- [x] onBeforeSendHeaders: urlFilter (glob), regexFilter, initiatorDomains/excluded, resourceTypes, set/remove/append
+- [x] onHeadersReceived: responseHeaders set/remove
+- [x] Инициатор: из referrer / webContents URL (chrome-extension://id → id)
+
 ## 2026-08-13 — v0.5.4 — VK Next Fix Attempt
 
 ### Diagnosis (исследование кода расширения + доков Electron)

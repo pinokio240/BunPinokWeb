@@ -31,6 +31,7 @@ import { AuthDialogManager } from './src/auth-dialog.js';
 import { CrxInstaller } from './src/crx-installer.js';
 import { XpiConverter } from './src/xpi-converter.js';
 import { SessionStore } from './src/session-store.js';
+import { DnrBridge } from './src/dnr-bridge.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -48,6 +49,7 @@ let authDialogManager = null;
 let crxInstaller = null;
 let xpiConverter = null;
 let sessionStore = null;
+let dnrBridge = null;
 let bookmarksBarVisible = false;
 const readerContent = new Map();
 
@@ -1015,6 +1017,7 @@ app.whenReady().then(async () => {
     historyStore = new HistoryStore();
     bookmarkStore = new BookmarkStore();
     sessionStore = new SessionStore();
+    dnrBridge = new DnrBridge();
     permissionDialogManager = new PermissionDialogManager();
     passwordStore = new PasswordStore();
     authDialogManager = new AuthDialogManager();

@@ -117,8 +117,28 @@ const COMPAT_SHIM = `(function () {
     }
     if (!chrome.declarativeNetRequest) {
         chrome.declarativeNetRequest = {
-            updateDynamicRules: function (options, cb) { if (cb) { cb(); } },
-            updateSessionRules: function (options, cb) { if (cb) { cb(); } },
+            updateDynamicRules: function (options, cb) {
+                const payload = {
+                    addRules: options && options.addRules ? options.addRules : [],
+                    removeRuleIds: options && options.removeRuleIds ? options.removeRuleIds : []
+                };
+                fetch('http://127.0.0.1:33123/rules', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(() => { if (cb) { cb(); } }).catch(() => { if (cb) { cb(); } });
+            },
+            updateSessionRules: function (options, cb) {
+                const payload = {
+                    addRules: options && options.addRules ? options.addRules : [],
+                    removeRuleIds: options && options.removeRuleIds ? options.removeRuleIds : []
+                };
+                fetch('http://127.0.0.1:33123/rules', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(() => { if (cb) { cb(); } }).catch(() => { if (cb) { cb(); } });
+            },
             getDynamicRules: function (cb) { if (cb) { cb([]); } },
             getSessionRules: function (cb) { if (cb) { cb([]); } },
             setExtensionActionOptions: function (options, cb) { if (cb) { cb(); } }
