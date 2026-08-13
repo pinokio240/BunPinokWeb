@@ -1,5 +1,20 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.8.6 — DevTools в доке внутри окна + alwaysOnTop попапов
+
+### Проблема
+- DevTools (detached) открывался ПОД главным frameless-окном и был недостижим
+- Лог подтвердил: `Создан webContents: devtools://` есть, окно создаётся, но пользователь его не видит
+- `isDevToolsOpened()` запаздывал → повторный F12 открывал второе окно вместо закрытия
+
+### Fix
+- [x] DevTools теперь **докятся вниз главного окна** (как Chrome): отдельная `WebContentsView` + `webContents.setDevToolsWebContents()` + `openDevTools({mode:'detach'})` → DevTools рендерится внутри браузера, уйти под окно не может
+- [x] Проверено автотестом на машине пользователя: `dtView URL: devtools://…`, `inspectElement OK`
+- [x] Разделение bounds: вкладка 58% сверху, DevTools 42% снизу; скрытие/показ при тогле
+- [x] Переключение вкладок при открытом DevTools → DevTools следует за активной вкладкой (как Chrome)
+- [x] Свой флаг состояния `tab.devToolsOpen` (не полагаемся на запаздывающий `isDevToolsOpened`)
+- [x] Попап расширения: `setAlwaysOnTop(true, 'pop-up-menu')` + `moveTop()` — больше не прячется под окно
+
 ## 2026-08-13 — v0.8.5 — MV2-first + ПКМ-меню тулбара
 
 ### Корень оставшейся поломки
