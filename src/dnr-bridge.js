@@ -1,7 +1,7 @@
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
-import { app, session, BrowserWindow, screen, globalShortcut } from 'electron';
+import { app, session, BrowserWindow, screen, globalShortcut, net } from 'electron';
 
 const BRIDGE_PORT = 33123;
 
@@ -81,7 +81,13 @@ function domainMatches(host, domainList) {
 const BUILTIN_VK_RULES = [
     {
         id: 9001,
-        action: { type: 'modifyHeaders', requestHeaders: [{ header: 'origin', operation: 'set', value: 'https://vk.ru/' }] },
+        action: {
+            type: 'modifyHeaders',
+            requestHeaders: [
+                { header: 'origin', operation: 'set', value: 'https://m.vk.ru' },
+                { header: 'referer', operation: 'set', value: 'https://m.vk.ru/' }
+            ]
+        },
         condition: { urlFilter: 'https://login.vk.ru/*act=web_token*', initiatorDomains: ['chrome-extension'] }
     },
     {
@@ -736,40 +742,105 @@ export class DnrBridge {
     }
 
     async _identityToken(payload) {
-        try {
-            const appId = payload && payload.appId ? payload.appId : 6287487;
-            const url = new URL('https://login.vk.ru');
-            url.searchParams.set('act', 'web_token');
-            const body = new URLSearchParams();
-            body.set('version', '1');
-            body.set('app_id', String(appId));
-            const resp = await session.defaultSession.fetch(url.toString(), {
-                method: 'POST',
-                headers: {
-                    'content-type': 'application/x-www-form-urlencoded',
-                    'origin': 'https://vk.ru/'
-                },
-                body: body.toString()
-            });
-            const data = await resp.json();
-            if (data && data.type === 'okay' && data.data && data.data.access_token) {
-                if (this.logger) {
-                    this.logger.info('identity', 'web_token получен (user_id=' + (data.data.user_id || '?') + ')');
+        const appId = payload && payload.appId ? payload.appId : 6287487;
+        const cookiePairs = new Map();
+        const cookieDomains = [
+            'https://vk.ru', 'https://m.vk.ru', 'https://login.vk.ru',
+            'https://id.vk.ru', 'https://web.api.vk.ru',
+            'https://vk.com', 'https://login.vk.com'
+        ];
+        for (const domain of cookieDomains) {
+            try {
+                const cookies = await session.defaultSession.cookies.get({ url: domain });
+                for (const cookie of cookies) {
+                    if (cookie.name && cookie.value) {
+                        cookiePairs.set(cookie.name, cookie.value);
+                    }
                 }
-                return {
-                    success: true,
-                    token: data.data.access_token,
-                    userId: data.data.user_id,
-                    expires: data.data.expires
-                };
+            } catch (err) {
+                // cookie read не критичен
             }
-            return { success: false, error: 'web_token не получен (type=' + (data && data.type ? data.type : 'error') + ')' };
-        } catch (err) {
-            if (this.logger) {
-                this.logger.error('identity', 'web_token ошибка: ' + err.message);
-            }
-            return { success: false, error: err.message };
         }
+        const cookieHeader = [];
+        for (const entry of cookiePairs.entries()) {
+            cookieHeader.push(entry[0] + '=' + entry[1]);
+        }
+
+        const strategies = [
+            { origin: 'https://m.vk.ru', referer: 'https://m.vk.ru/', url: null, label: 'mweb' },
+            { origin: 'https://id.vk.ru', referer: 'https://id.vk.ru/', url: null, label: 'id' },
+            { origin: 'https://login.vk.ru', referer: 'https://login.vk.ru/', url: null, label: 'login' },
+            { origin: null, referer: 'https://m.vk.ru/', url: null, label: 'no-origin' },
+            { origin: null, referer: 'https://m.vk.ru/', url: 'https://login.vk.ru/?act=web_token&app_id=' + appId + '&version=1&origin=m.vk.ru', label: 'query-param' },
+            { origin: 'https://id.vk.com', referer: 'https://id.vk.com/', url: 'https://login.vk.com/?act=web_token&app_id=' + appId + '&version=1', label: 'com-endpoint' }
+        ];
+
+        const errors = [];
+        for (const strategy of strategies) {
+            const result = await this._postWebToken(appId, strategy, cookieHeader.join('; '));
+            if (result.success) {
+                if (this.logger) {
+                    this.logger.info('identity', 'web_token получен (' + strategy.label + ', user_id=' + (result.userId || '?') + ')');
+                }
+                return result;
+            }
+            errors.push(strategy.label + ': ' + result.error);
+        }
+        if (this.logger) {
+            this.logger.error('identity', 'web_token: все Origin-стратегии не сработали — ' + errors.join(' | '));
+        }
+        return { success: false, error: errors.join(' | ') };
+    }
+
+    _postWebToken(appId, strategy, cookieHeader) {
+        return new Promise((resolve) => {
+            const urlStr = strategy.url || ('https://login.vk.ru/?act=web_token&app_id=' + appId + '&version=1');
+            const request = net.request({
+                method: 'POST',
+                url: urlStr
+            });
+            if (strategy.origin) {
+                request.setHeader('Origin', strategy.origin);
+            }
+            if (strategy.referer) {
+                request.setHeader('Referer', strategy.referer);
+            }
+            request.setHeader('Content-Type', 'application/x-www-form-urlencoded');
+            if (cookieHeader) {
+                request.setHeader('Cookie', cookieHeader);
+            }
+            request.on('response', (response) => {
+                let body = '';
+                response.on('data', (chunk) => {
+                    body = body + chunk.toString('utf-8');
+                });
+                response.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(body);
+                        if (parsed && parsed.type === 'okay' && parsed.data && parsed.data.access_token) {
+                            resolve({
+                                success: true,
+                                token: parsed.data.access_token,
+                                userId: parsed.data.user_id,
+                                expires: parsed.data.expires
+                            });
+                            return;
+                        }
+                        resolve({
+                            success: false,
+                            error: 'type=' + (parsed && parsed.type ? parsed.type : 'parse') +
+                                ' info=' + (parsed && parsed.error_info ? parsed.error_info : '')
+                        });
+                    } catch (err) {
+                        resolve({ success: false, error: 'non-json: ' + body.slice(0, 80) });
+                    }
+                });
+            });
+            request.on('error', (err) => {
+                resolve({ success: false, error: err.message });
+            });
+            request.end('version=1&app_id=' + appId);
+        });
     }
 
     _identityLaunch(payload) {
@@ -1105,31 +1176,41 @@ export class DnrBridge {
                     }
                 }
             }
-            for (const rule of this.rules) {
-                if (!this._matches(details, rule.condition)) {
-                    continue;
-                }
-                if (rule.id >= 9000 && this.logger && !this._dnrLogged.has(details.url) && this._dnrLogged.size < 50) {
-                    this._dnrLogged.add(details.url);
-                    this.logger.info('dnr', 'Правило VK применено к ' + details.url.slice(0, 140));
-                }
-                if (rule.action && rule.action.type === 'modifyHeaders' && Array.isArray(rule.action.requestHeaders)) {
-                    for (const op of rule.action.requestHeaders) {
-                        if (op.operation === 'set') {
-                            headers[op.header] = op.value;
-                        } else if (op.operation === 'remove') {
-                            delete headers[op.header];
-                        } else if (op.operation === 'append') {
-                            const current = headers[op.header];
-                            if (current) {
-                                headers[op.header] = current + ', ' + op.value;
-                            } else {
+            const applyDnrPass = (builtinOnly) => {
+                for (const rule of this.rules) {
+                    if (builtinOnly && rule.id < 9000) {
+                        continue;
+                    }
+                    if (!builtinOnly && rule.id >= 9000) {
+                        continue;
+                    }
+                    if (!this._matches(details, rule.condition)) {
+                        continue;
+                    }
+                    if (rule.id >= 9000 && this.logger && !this._dnrLogged.has(details.url) && this._dnrLogged.size < 50) {
+                        this._dnrLogged.add(details.url);
+                        this.logger.info('dnr', 'Правило VK применено к ' + details.url.slice(0, 140));
+                    }
+                    if (rule.action && rule.action.type === 'modifyHeaders' && Array.isArray(rule.action.requestHeaders)) {
+                        for (const op of rule.action.requestHeaders) {
+                            if (op.operation === 'set') {
                                 headers[op.header] = op.value;
+                            } else if (op.operation === 'remove') {
+                                delete headers[op.header];
+                            } else if (op.operation === 'append') {
+                                const current = headers[op.header];
+                                if (current) {
+                                    headers[op.header] = current + ', ' + op.value;
+                                } else {
+                                    headers[op.header] = op.value;
+                                }
                             }
                         }
                     }
                 }
-            }
+            };
+            applyDnrPass(false);
+            applyDnrPass(true);
             if (this.wrListeners.length === 0) {
                 callback({ requestHeaders: headers });
                 return;
