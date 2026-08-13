@@ -1,13 +1,13 @@
-import path from 'node:path';
+﻿import path from 'node:path';
 import fs from 'node:fs';
 import AdmZip from 'adm-zip';
 
 const POLYFILL = `(function () {
-    if (typeof browser !== 'undefined' && browser.runtime && browser.runtime.id) {
+    if (typeof globalThis !== 'undefined' && typeof globalThis.browser !== 'undefined' && globalThis.browserApi.runtime && globalThis.browserApi.runtime.id) {
         return;
     }
     const chromeObj = (typeof chrome !== 'undefined') ? chrome : null;
-    const browser = {};
+    const browserApi = {};
 
     function promisify(target, src, methods) {
         for (const method of methods) {
@@ -58,94 +58,94 @@ const POLYFILL = `(function () {
     }
 
     if (chromeObj) {
-        browser.runtime = {};
-        event(browser.runtime, 'onMessage');
-        event(browser.runtime, 'onInstalled');
-        event(browser.runtime, 'onStartup');
-        promisify(browser.runtime, chromeObj.runtime, ['sendMessage', 'getBackgroundPage', 'getPlatformInfo']);
-        browser.runtime.getURL = function (p) { return chromeObj.runtime.getURL(p); };
-        Object.defineProperty(browser.runtime, 'id', { get: function () { return chromeObj.runtime.id; } });
-        Object.defineProperty(browser.runtime, 'lastError', { get: function () { return chromeObj.runtime.lastError; } });
+        browserApi.runtime = {};
+        event(browserApi.runtime, 'onMessage');
+        event(browserApi.runtime, 'onInstalled');
+        event(browserApi.runtime, 'onStartup');
+        promisify(browserApi.runtime, chromeObj.runtime, ['sendMessage', 'getBackgroundPage', 'getPlatformInfo']);
+        browserApi.runtime.getURL = function (p) { return chromeObj.runtime.getURL(p); };
+        Object.defineProperty(browserApi.runtime, 'id', { get: function () { return chromeObj.runtime.id; } });
+        Object.defineProperty(browserApi.runtime, 'lastError', { get: function () { return chromeObj.runtime.lastError; } });
 
-        browser.storage = { local: {}, sync: {}, managed: {} };
-        promisify(browser.storage.local, chromeObj.storage.local, ['get', 'set', 'remove', 'clear']);
-        promisify(browser.storage.sync, chromeObj.storage.sync, ['get', 'set', 'remove', 'clear']);
-        event(browser.storage, 'onChanged');
+        browserApi.storage = { local: {}, sync: {}, managed: {} };
+        promisify(browserApi.storage.local, chromeObj.storage.local, ['get', 'set', 'remove', 'clear']);
+        promisify(browserApi.storage.sync, chromeObj.storage.sync, ['get', 'set', 'remove', 'clear']);
+        event(browserApi.storage, 'onChanged');
 
-        browser.tabs = {};
-        promisify(browser.tabs, chromeObj.tabs, ['query', 'create', 'update', 'remove', 'get', 'executeScript', 'insertCSS', 'sendMessage']);
-        event(browser.tabs, 'onCreated');
-        event(browser.tabs, 'onUpdated');
-        event(browser.tabs, 'onRemoved');
-        event(browser.tabs, 'onActivated');
+        browserApi.tabs = {};
+        promisify(browserApi.tabs, chromeObj.tabs, ['query', 'create', 'update', 'remove', 'get', 'executeScript', 'insertCSS', 'sendMessage']);
+        event(browserApi.tabs, 'onCreated');
+        event(browserApi.tabs, 'onUpdated');
+        event(browserApi.tabs, 'onRemoved');
+        event(browserApi.tabs, 'onActivated');
 
-        browser.windows = {};
-        promisify(browser.windows, chromeObj.windows, ['create', 'get', 'getAll', 'update', 'remove']);
+        browserApi.windows = {};
+        promisify(browserApi.windows, chromeObj.windows, ['create', 'get', 'getAll', 'update', 'remove']);
 
-        browser.notifications = {};
-        promisify(browser.notifications, chromeObj.notifications, ['create', 'update', 'clear', 'getAll']);
-        event(browser.notifications, 'onClicked');
-        event(browser.notifications, 'onClosed');
+        browserApi.notifications = {};
+        promisify(browserApi.notifications, chromeObj.notifications, ['create', 'update', 'clear', 'getAll']);
+        event(browserApi.notifications, 'onClicked');
+        event(browserApi.notifications, 'onClosed');
 
-        browser.i18n = {};
-        browser.i18n.getMessage = function () { return chromeObj.i18n.getMessage.apply(chromeObj.i18n, arguments); };
+        browserApi.i18n = {};
+        browserApi.i18n.getMessage = function () { return chromeObj.i18n.getMessage.apply(chromeObj.i18n, arguments); };
 
-        browser.commands = {};
-        promisify(browser.commands, chromeObj.commands, ['getAll']);
-        event(browser.commands, 'onCommand');
+        browserApi.commands = {};
+        promisify(browserApi.commands, chromeObj.commands, ['getAll']);
+        event(browserApi.commands, 'onCommand');
 
-        browser.bookmarks = {};
-        promisify(browser.bookmarks, chromeObj.bookmarks, ['create', 'get', 'getChildren', 'getTree', 'update', 'remove', 'search']);
+        browserApi.bookmarks = {};
+        promisify(browserApi.bookmarks, chromeObj.bookmarks, ['create', 'get', 'getChildren', 'getTree', 'update', 'remove', 'search']);
 
-        browser.history = {};
-        promisify(browser.history, chromeObj.history, ['search', 'deleteUrl', 'deleteAll']);
+        browserApi.history = {};
+        promisify(browserApi.history, chromeObj.history, ['search', 'deleteUrl', 'deleteAll']);
 
-        browser.action = {};
-        browser.browserAction = {};
+        browserApi.action = {};
+        browserApi.browserAction = {};
         const actionApi = chromeObj.action || chromeObj.browserAction || {};
-        promisify(browser.action, actionApi, ['setBadgeText', 'setBadgeBackgroundColor', 'setIcon', 'setTitle', 'setPopup', 'getBadgeText', 'getTitle', 'getPopup']);
-        promisify(browser.browserAction, actionApi, ['setBadgeText', 'setBadgeBackgroundColor', 'setIcon', 'setTitle', 'setPopup', 'getBadgeText', 'getTitle', 'getPopup']);
-        event(browser.action, 'onClicked');
-        event(browser.browserAction, 'onClicked');
+        promisify(browserApi.action, actionApi, ['setBadgeText', 'setBadgeBackgroundColor', 'setIcon', 'setTitle', 'setPopup', 'getBadgeText', 'getTitle', 'getPopup']);
+        promisify(browserApi.browserAction, actionApi, ['setBadgeText', 'setBadgeBackgroundColor', 'setIcon', 'setTitle', 'setPopup', 'getBadgeText', 'getTitle', 'getPopup']);
+        event(browserApi.action, 'onClicked');
+        event(browserApi.browserAction, 'onClicked');
 
-        browser.webRequest = {};
-        event(browser.webRequest, 'onBeforeRequest');
-        event(browser.webRequest, 'onHeadersReceived');
-        event(browser.webRequest, 'onBeforeSendHeaders');
-        event(browser.webRequest, 'onCompleted');
-        event(browser.webRequest, 'onErrorOccurred');
+        browserApi.webRequest = {};
+        event(browserApi.webRequest, 'onBeforeRequest');
+        event(browserApi.webRequest, 'onHeadersReceived');
+        event(browserApi.webRequest, 'onBeforeSendHeaders');
+        event(browserApi.webRequest, 'onCompleted');
+        event(browserApi.webRequest, 'onErrorOccurred');
 
-        browser.cookies = {};
-        promisify(browser.cookies, chromeObj.cookies, ['get', 'getAll', 'set', 'remove']);
-        event(browser.cookies, 'onChanged');
+        browserApi.cookies = {};
+        promisify(browserApi.cookies, chromeObj.cookies, ['get', 'getAll', 'set', 'remove']);
+        event(browserApi.cookies, 'onChanged');
 
-        browser.contextMenus = browser.menus = {};
+        browserApi.contextMenus = browserApi.menus = {};
         const menusApi = chromeObj.contextMenus || {};
-        promisify(browser.contextMenus, menusApi, ['create', 'remove', 'removeAll', 'update']);
-        event(browser.contextMenus, 'onClicked');
+        promisify(browserApi.contextMenus, menusApi, ['create', 'remove', 'removeAll', 'update']);
+        event(browserApi.contextMenus, 'onClicked');
 
-        browser.sidebarAction = {};
+        browserApi.sidebarAction = {};
         if (chromeObj.sidebarAction) {
-            promisify(browser.sidebarAction, chromeObj.sidebarAction, ['setPanel', 'setTitle', 'setIcon', 'open', 'close', 'toggle']);
+            promisify(browserApi.sidebarAction, chromeObj.sidebarAction, ['setPanel', 'setTitle', 'setIcon', 'open', 'close', 'toggle']);
         }
 
-        browser.browserSettings = {};
-        browser.sessions = {};
+        browserApi.browserSettings = {};
+        browserApi.sessions = {};
         if (chromeObj.sessions) {
-            promisify(browser.sessions, chromeObj.sessions, ['getRecentlyClosed', 'restore']);
+            promisify(browserApi.sessions, chromeObj.sessions, ['getRecentlyClosed', 'restore']);
         }
-        browser.extension = {};
-        browser.extension.getURL = function (p) { return chromeObj.runtime.getURL(p); };
+        browserApi.extension = {};
+        browserApi.extension.getURL = function (p) { return chromeObj.runtime.getURL(p); };
     }
 
     if (typeof globalThis !== 'undefined') {
-        globalThis.browser = browser;
+        globalThis.browser = browserApi;
     }
     if (typeof window !== 'undefined') {
-        window.browser = browser;
+        window.browser = browserApi;
     }
     if (typeof global !== 'undefined') {
-        global.browser = browser;
+        global.browser = browserApi;
     }
 })();`;
 

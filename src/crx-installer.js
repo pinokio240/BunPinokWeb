@@ -23,6 +23,113 @@ function getZipStart(buffer) {
     return -1;
 }
 
+function readVarint(buffer, offset) {
+    let result = 0;
+    let shift = 0;
+    let pos = offset;
+    while (pos < buffer.length) {
+        const byte = buffer[pos];
+        result += (byte & 0x7f) * Math.pow(2, shift);
+        pos += 1;
+        if ((byte & 0x80) === 0) {
+            break;
+        }
+        shift += 7;
+    }
+    return { value: result, offset: pos };
+}
+
+function extractCrxPublicKey(buffer) {
+    try {
+        if (buffer.length < 12) {
+            return null;
+        }
+        const magic = buffer.slice(0, 4).toString('latin1');
+        if (magic !== 'Cr24') {
+            return null;
+        }
+        const version = buffer.readUInt32LE(4);
+        if (version === 2) {
+            const pubkeyLen = buffer.readUInt32LE(8);
+            if (16 + pubkeyLen > buffer.length) {
+                return null;
+            }
+            return buffer.slice(16, 16 + pubkeyLen);
+        }
+        if (version === 3) {
+            const headerSize = buffer.readUInt32LE(8);
+            if (12 + headerSize > buffer.length) {
+                return null;
+            }
+            const header = buffer.slice(12, 12 + headerSize);
+            let pos = 0;
+            while (pos < header.length) {
+                const keyResult = readVarint(header, pos);
+                const fieldNumber = Math.floor(keyResult.value / 8);
+                const wireType = keyResult.value % 8;
+                pos = keyResult.offset;
+                if (wireType === 2) {
+                    const lenResult = readVarint(header, pos);
+                    const len = lenResult.value;
+                    pos = lenResult.offset;
+                    const sub = header.slice(pos, pos + len);
+                    pos = pos + len;
+                    if (fieldNumber === 2) {
+                        let subPos = 0;
+                        while (subPos < sub.length) {
+                            const subKey = readVarint(sub, subPos);
+                            const subField = Math.floor(subKey.value / 8);
+                            const subWire = subKey.value % 8;
+                            subPos = subKey.offset;
+                            if (subWire === 2) {
+                                const subLen = readVarint(sub, subPos);
+                                subPos = subLen.offset;
+                                const data = sub.slice(subPos, subPos + subLen.value);
+                                subPos = subPos + subLen.value;
+                                if (subField === 1) {
+                                    return data;
+                                }
+                            } else if (subWire === 0) {
+                                subPos = readVarint(sub, subPos).offset;
+                            } else if (subWire === 1) {
+                                subPos = subPos + 8;
+                            } else if (subWire === 5) {
+                                subPos = subPos + 4;
+                            }
+                        }
+                    }
+                } else if (wireType === 0) {
+                    pos = readVarint(header, pos).offset;
+                } else if (wireType === 1) {
+                    pos = pos + 8;
+                } else if (wireType === 5) {
+                    pos = pos + 4;
+                }
+            }
+        }
+        return null;
+    } catch (err) {
+        return null;
+    }
+}
+
+function injectKeyIntoManifest(targetDir, publicKey) {
+    if (!publicKey) {
+        return;
+    }
+    try {
+        const manifestPath = path.join(targetDir, 'manifest.json');
+        if (!fs.existsSync(manifestPath)) {
+            return;
+        }
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+        manifest.key = publicKey.toString('base64');
+        fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+    } catch (err) {
+        console.error('Не удалось вписать ключ в manifest:', err);
+    }
+}
+
 export class CrxInstaller {
     constructor(extensionManager, xpiConverter) {
         this.extensionManager = extensionManager;
@@ -153,6 +260,7 @@ export class CrxInstaller {
 
         const downloadUrl = this._buildDownloadUrl(source);
         const buffer = await this._downloadBuffer(downloadUrl);
+        const publicKey = extractCrxPublicKey(buffer);
         const zipStart = getZipStart(buffer);
         if (zipStart < 0) {
             throw new Error('Скачанный файл не является CRX-архивом');
@@ -166,6 +274,8 @@ export class CrxInstaller {
         if (!fs.existsSync(manifestPath)) {
             throw new Error('В архиве нет manifest.json');
         }
+
+        injectKeyIntoManifest(targetDir, publicKey);
 
         const extId = await this.extensionManager.loadExtension(targetDir);
         return { id: extId, path: targetDir };
@@ -211,6 +321,8 @@ export class CrxInstaller {
     }
 
     async installFromFile(filePath) {
+        const rawBuffer = fs.readFileSync(filePath);
+        const publicKey = extractCrxPublicKey(rawBuffer);
         const zipBuffer = this._readCrxFile(filePath);
 
         const tempDir = path.join(this._installedDir(), 'tmp-' + Date.now());
@@ -228,6 +340,8 @@ export class CrxInstaller {
             fs.rmSync(finalDir, { recursive: true, force: true });
         }
         fs.renameSync(tempDir, finalDir);
+
+        injectKeyIntoManifest(finalDir, publicKey);
 
         const extId = await this.extensionManager.loadExtension(finalDir);
         return { id: extId, path: finalDir };

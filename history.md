@@ -1,5 +1,17 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.4 — Polyfill TDZ Fix + CRX Public Key
+
+### Privacy Badger (из логов)
+- Баг: `Cannot access 'browser' before initialization` — TDZ: `typeof browser` до `const browser` в полифилле
+- Фикс: проверка через globalThis.browser + переименование в browserApi
+
+### VK Next "client_secret is incorrect"
+- Причина: VK проверяет Origin chrome-extension://<официальный ID>; у нас ID другой → OAuth отклоняет с вводящей в заблуждение ошибкой
+- Фикс: extractCrxPublicKey — разбор CRX2/CRX3 заголовка (protobuf) → manifest.key → ID совпадает с Chrome
+- Применяется в installFromUrl и installFromFile
+- Пользователю: переустановить расширения из магазина
+
 ## 2026-08-13 — v0.6.3 — Logging System (Журнал)
 
 ### Completed
