@@ -763,7 +763,8 @@ export function prepareExtensionForElectron(extPath, mode) {
     let changed = false;
 
     const shimPath = path.join(extPath, 'electron-compat.js');
-    if (!fs.existsSync(shimPath)) {
+    const existingShim = fs.existsSync(shimPath) ? fs.readFileSync(shimPath, 'utf-8') : '';
+    if (existingShim !== COMPAT_SHIM) {
         fs.writeFileSync(shimPath, COMPAT_SHIM, 'utf-8');
     }
 
