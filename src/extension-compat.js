@@ -203,6 +203,40 @@ const COMPAT_SHIM = `(function () {
     if (chrome.webRequest && !chrome.webRequest.handlerBehaviorChanged) {
         chrome.webRequest.handlerBehaviorChanged = function (cb) { if (cb) { cb(); } };
     }
+    if (!chrome.offscreen) {
+        chrome.offscreen = {
+            createDocument: function (options, cb) {
+                const relativeUrl = options && options.url ? options.url : 'offscreen.html';
+                const fullUrl = chrome.runtime.getURL(relativeUrl);
+                const extId = chrome.runtime.id;
+                fetch('http://127.0.0.1:33123/offscreen', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ extId: extId, url: fullUrl })
+                }).then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
+            },
+            closeDocument: function (cb) {
+                const extId = chrome.runtime.id;
+                fetch('http://127.0.0.1:33123/offscreen-close', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ extId: extId })
+                }).then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
+            },
+            hasDocument: function (cb) { if (cb) { cb(false); } },
+            REASON: {
+                AUDIO_PLAYBACK: 'AUDIO_PLAYBACK',
+                USER_MEDIA: 'USER_MEDIA',
+                DISPLAY_MEDIA: 'DISPLAY_MEDIA',
+                DOM_SCRAPING: 'DOM_SCRAPING',
+                BLOBS: 'BLOBS',
+                LOCAL_STORAGE: 'LOCAL_STORAGE',
+                WORKERS: 'WORKERS',
+                IFRAME_SCRIPTING: 'IFRAME_SCRIPTING',
+                CLIPBOARD: 'CLIPBOARD'
+            }
+        };
+    }
     if (!chrome.scripting) {
         chrome.scripting = {
             executeScript: function (options, cb) {

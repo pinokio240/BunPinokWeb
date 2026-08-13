@@ -1,7 +1,7 @@
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
-import { app, session } from 'electron';
+import { app, session, BrowserWindow } from 'electron';
 
 const BRIDGE_PORT = 33123;
 
@@ -67,6 +67,7 @@ export class DnrBridge {
         this.downloads = [];
         this.nextDownloadId = 1;
         this.logger = null;
+        this.offscreenWindows = new Map();
         this._startServer();
         this._setupWebRequest();
     }
@@ -99,6 +100,18 @@ export class DnrBridge {
                         this._json(res, this.downloads);
                         return;
                     }
+                    if (req.method === 'POST' && req.url === '/offscreen') {
+                        const payload = JSON.parse(body);
+                        this._createOffscreen(payload);
+                        this._json(res, { success: true });
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/offscreen-close') {
+                        const payload = JSON.parse(body);
+                        this._closeOffscreen(payload.extId);
+                        this._json(res, { success: true });
+                        return;
+                    }
                     res.writeHead(404);
                     res.end();
                 } catch (err) {
@@ -116,6 +129,49 @@ export class DnrBridge {
     _json(res, payload) {
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify(payload));
+    }
+
+    _createOffscreen(payload) {
+        try {
+            const key = payload.extId || payload.url;
+            const existing = this.offscreenWindows.get(key);
+            if (existing && !existing.isDestroyed()) {
+                return;
+            }
+            const win = new BrowserWindow({
+                show: false,
+                width: 480,
+                height: 400,
+                skipTaskbar: true,
+                webPreferences: {
+                    session: session.defaultSession,
+                    sandbox: true,
+                    contextIsolation: true,
+                    nodeIntegration: false
+                }
+            });
+            win.webContents.setAudioMuted(false);
+            win.loadURL(payload.url).catch(() => {});
+            this.offscreenWindows.set(key, win);
+            win.on('closed', () => {
+                this.offscreenWindows.delete(key);
+            });
+            if (this.logger) {
+                this.logger.info('offscreen', 'Создан скрытый offscreen-документ: ' + payload.url);
+            }
+        } catch (err) {
+            if (this.logger) {
+                this.logger.error('offscreen', 'Не удалось создать offscreen: ' + err.message);
+            }
+        }
+    }
+
+    _closeOffscreen(extId) {
+        const win = this.offscreenWindows.get(extId);
+        if (win && !win.isDestroyed()) {
+            win.close();
+        }
+        this.offscreenWindows.delete(extId);
     }
 
     _handleDownload(payload) {
