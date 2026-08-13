@@ -114,6 +114,9 @@ export class DnrBridge {
             });
             req.on('end', () => {
                 try {
+                    if (this.logger && req.url !== '/webrq-pending' && req.url !== '/commands-pending') {
+                        this.logger.info('bridge', req.method + ' ' + req.url + (body ? ' ' + body.slice(0, 200) : ''));
+                    }
                     if (req.method === 'POST' && req.url === '/rules') {
                         const payload = JSON.parse(body);
                         this._applyRules(payload);

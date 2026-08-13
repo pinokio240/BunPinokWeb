@@ -1337,32 +1337,53 @@ app.whenReady().then(async () => {
             if (!url.startsWith('chrome-extension://')) {
                 continue;
             }
-            wc.__bunpinokHooked = true;
-            wc.on('console-message', (event, level, message, line, sourceId) => {
-                if (!logger) {
-                    return;
-                }
-                let logLevel = level;
-                let logMessage = message;
-                let logSource = sourceId;
-                if (event && typeof event === 'object' && event.message) {
-                    logLevel = event.level === 'error' || event.level === 'warning' ? 2 : 0;
-                    logMessage = event.message;
-                    logSource = event.sourceId || '';
-                }
-                const text = String(logMessage || '');
-                logger.log(typeof logLevel === 'number' && logLevel >= 2 ? 'error' : 'info', 'ext-bg:' + logSource, text);
-            });
-            wc.on('render-process-gone', (_event, details) => {
-                if (logger) {
-                    logger.error('ext-bg', 'Фон расширения упал: ' + details.reason + ' (' + url + ')');
-                }
-            });
-            if (logger) {
-                logger.info('ext-bg', 'Консоль подключена: ' + url);
-            }
+            hookSingleExtensionContents(wc, url);
         }
     }
+
+    function hookSingleExtensionContents(wc, url) {
+        wc.__bunpinokHooked = true;
+        wc.on('console-message', (event, level, message, line, sourceId) => {
+            if (!logger) {
+                return;
+            }
+            let logLevel = level;
+            let logMessage = message;
+            let logSource = sourceId;
+            if (event && typeof event === 'object' && event.message) {
+                logLevel = event.level === 'error' || event.level === 'warning' ? 2 : 0;
+                logMessage = event.message;
+                logSource = event.sourceId || '';
+            }
+            const text = String(logMessage || '');
+            logger.log(typeof logLevel === 'number' && logLevel >= 2 ? 'error' : 'info', 'ext-bg:' + logSource, text);
+        });
+        wc.on('render-process-gone', (_event, details) => {
+            if (logger) {
+                logger.error('ext-bg', 'Фон расширения упал: ' + details.reason + ' (' + url + ')');
+            }
+        });
+        wc.on('did-fail-load', (_event, code, desc, failedUrl) => {
+            if (logger) {
+                logger.error('ext-bg', 'Не удалось загрузить ' + failedUrl + ': ' + desc);
+            }
+        });
+        if (logger) {
+            logger.info('ext-bg', 'Консоль подключена: ' + url);
+        }
+    }
+
+    app.on('web-contents-created', (_event, contents) => {
+        try {
+            const url = contents.getURL();
+            if (url.startsWith('chrome-extension://') && !contents.__bunpinokHooked) {
+                hookSingleExtensionContents(contents, url);
+            }
+        } catch (err) {
+            // ещё не готов URL — подключим через poll
+        }
+    });
+
     hookExtensionConsole();
     setInterval(hookExtensionConsole, 3000);
 
