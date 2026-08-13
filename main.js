@@ -43,6 +43,7 @@ import { Logger } from './src/logger.js';
 
 let mainWindow = null;
 let chromeView = null;
+let devToolsView = null;
 let tabManager = null;
 let settingsStore = null;
 let extensionManager = null;
@@ -1082,6 +1083,8 @@ function openExtensionPopup(extId, popupPath, x, y) {
         });
     });
 
+    win.setAlwaysOnTop(true, 'pop-up-menu');
+
     win.on('blur', () => {
         if (!win.isDestroyed()) {
             win.close();
@@ -1127,6 +1130,7 @@ function openExtensionPopup(extId, popupPath, x, y) {
     });
     win.once('ready-to-show', () => {
         win.show();
+        win.moveTop();
         win.focus();
     });
 
@@ -1216,7 +1220,18 @@ app.whenReady().then(async () => {
     chromeView.setBackgroundColor('#1a1a2e');
     mainWindow.contentView.addChildView(chromeView);
 
+    devToolsView = new WebContentsView({
+        webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false
+        }
+    });
+    devToolsView.setVisible(false);
+    mainWindow.contentView.addChildView(devToolsView);
+
     tabManager = new TabManager(mainWindow, chromeViewOptions);
+    tabManager.setDevToolsView(devToolsView);
     tabManager.setHistoryStore(historyStore);
     tabManager.setSettingsStore(settingsStore);
     tabManager.setLogger(logger);

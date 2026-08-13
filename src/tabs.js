@@ -1,4 +1,4 @@
-import { WebContentsView, Menu, clipboard, BrowserWindow } from 'electron';
+import { WebContentsView, Menu, clipboard } from 'electron';
 
 let nextTabId = 1;
 
@@ -26,11 +26,19 @@ export class TabManager {
         this.logger = null;
         this.pageZoomFactor = 1.0;
         this.defaultFontSize = 16;
+        this.devToolsView = null;
+        this.devToolsVisible = false;
+        this.devToolsTabId = null;
+        this.lastBounds = null;
         this._setupAutoUpdate();
     }
 
     setLogger(logger) {
         this.logger = logger;
+    }
+
+    setDevToolsView(view) {
+        this.devToolsView = view;
     }
 
     setChromeExtensions(instance) {
@@ -84,6 +92,9 @@ export class TabManager {
         const view = new WebContentsView(this._buildViewOptions(url));
         view.setBackgroundColor('#ffffff');
         view.webContents.setZoomFactor(this.pageZoomFactor);
+        if (this.devToolsView) {
+            view.webContents.setDevToolsWebContents(this.devToolsView.webContents);
+        }
 
         const tab = new Tab(id, view, url);
         this.tabs.set(id, tab);
@@ -495,6 +506,13 @@ export class TabManager {
         tab.view.setVisible(true);
         tab.isSelected = true;
         this.activeTabId = tabId;
+        if (this.devToolsVisible && this.devToolsTabId !== tabId) {
+            const oldDevTab = this.tabs.get(this.devToolsTabId);
+            if (oldDevTab) {
+                this._closeDevToolsForTab(oldDevTab);
+                this._openDevToolsForTab(tab);
+            }
+        }
         if (this.chromeExtensions) {
             try {
                 this.chromeExtensions.selectTab(tab.view.webContents);
@@ -520,46 +538,57 @@ export class TabManager {
             }
             return;
         }
-        const wc = tab.view.webContents;
-        const dtOpen = tab.devToolsOpen === true || wc.isDevToolsOpened();
         if (this.logger) {
-            this.logger.info('devtools', 'toggleDevTools: ' + tab.url + ' (opened=' + dtOpen + ')');
+            this.logger.info('devtools', 'toggleDevTools: ' + tab.url + ' (opened=' + (tab.devToolsOpen === true) + ')');
         }
-        if (dtOpen) {
-            tab.devToolsOpen = false;
-            wc.closeDevTools();
+        if (tab.devToolsOpen === true) {
+            this._closeDevToolsForTab(tab);
         } else {
-            tab.devToolsOpen = true;
-            wc.once('devtools-closed', () => {
-                tab.devToolsOpen = false;
-            });
-            wc.once('devtools-opened', () => {
-                this._showDevToolsWindow(wc);
-            });
-            try {
-                wc.openDevTools({ mode: 'detach', activate: true });
-            } catch (err) {
-                tab.devToolsOpen = false;
-                if (this.logger) {
-                    this.logger.error('devtools', 'Не удалось открыть DevTools: ' + err.message);
-                }
-            }
+            this._openDevToolsForTab(tab);
         }
     }
 
-    _showDevToolsWindow(wc) {
-        try {
-            const dt = wc.devToolsWebContents;
-            if (dt && !dt.isDestroyed()) {
-                const dtWin = BrowserWindow.fromWebContents(dt);
-                if (dtWin && !dtWin.isDestroyed()) {
-                    dtWin.show();
-                    dtWin.moveTop();
-                    dtWin.focus();
-                }
+    _openDevToolsForTab(tab) {
+        const wc = tab.view.webContents;
+        tab.devToolsOpen = true;
+        this.devToolsVisible = true;
+        this.devToolsTabId = tab.id;
+        wc.once('devtools-closed', () => {
+            if (tab.devToolsOpen === true) {
+                this._closeDevToolsForTab(tab);
             }
+        });
+        try {
+            if (this.devToolsView) {
+                wc.setDevToolsWebContents(this.devToolsView.webContents);
+            }
+            wc.openDevTools({ mode: 'detach', activate: true });
         } catch (err) {
-            // окно DevTools недоступно — пропускаем
+            tab.devToolsOpen = false;
+            if (this.logger) {
+                this.logger.error('devtools', 'Не удалось открыть DevTools: ' + err.message);
+            }
+        }
+        this._applyDevToolsBounds();
+    }
+
+    _closeDevToolsForTab(tab) {
+        tab.devToolsOpen = false;
+        if (this.devToolsTabId === tab.id) {
+            this.devToolsVisible = false;
+            this.devToolsTabId = null;
+        }
+        try {
+            tab.view.webContents.closeDevTools();
+        } catch (err) {
+            // DevTools уже закрыт
+        }
+        this._applyDevToolsBounds();
+    }
+
+    _applyDevToolsBounds() {
+        if (this.lastBounds) {
+            this.updateBounds(this.lastBounds);
         }
     }
 
@@ -590,29 +619,15 @@ export class TabManager {
                 }
             }
         };
-        const showDevToolsWindow = () => {
-            this._showDevToolsWindow(wc);
-        };
-        if (!wc.isDevToolsOpened() && tab.devToolsOpen !== true) {
-            wc.once('devtools-opened', () => {
-                showDevToolsWindow();
-                setTimeout(doInspect, 800);
-            });
-            try {
-                wc.openDevTools({ mode: 'detach', activate: true });
-            } catch (err) {
-                if (this.logger) {
-                    this.logger.error('devtools', 'Не удалось открыть DevTools: ' + err.message);
-                }
-            }
-            fallbackTimer = setTimeout(() => {
-                showDevToolsWindow();
-                doInspect();
-            }, 3000);
-        } else {
-            showDevToolsWindow();
+        if (tab.devToolsOpen === true && wc.isDevToolsOpened()) {
             doInspect();
+            return;
         }
+        wc.once('devtools-opened', () => {
+            setTimeout(doInspect, 800);
+        });
+        this._openDevToolsForTab(tab);
+        fallbackTimer = setTimeout(doInspect, 3000);
     }
 
     navigateTab(tabId, url) {
@@ -654,8 +669,33 @@ export class TabManager {
     }
 
     updateBounds(bounds) {
+        this.lastBounds = bounds;
+        const devToolsDocked = this.devToolsVisible && this.devToolsView && this.devToolsTabId !== null;
+        const splitY = Math.round(bounds.height * 0.58);
         for (const tab of this.tabs.values()) {
-            tab.view.setBounds(bounds);
+            if (devToolsDocked && tab.id === this.devToolsTabId) {
+                tab.view.setBounds({
+                    x: bounds.x,
+                    y: bounds.y,
+                    width: bounds.width,
+                    height: Math.max(0, splitY - 3)
+                });
+            } else {
+                tab.view.setBounds(bounds);
+            }
+        }
+        if (this.devToolsView) {
+            if (devToolsDocked) {
+                this.devToolsView.setVisible(true);
+                this.devToolsView.setBounds({
+                    x: bounds.x,
+                    y: bounds.y + splitY,
+                    width: bounds.width,
+                    height: Math.max(0, bounds.height - splitY)
+                });
+            } else {
+                this.devToolsView.setVisible(false);
+            }
         }
     }
 
