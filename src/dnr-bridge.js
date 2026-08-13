@@ -1416,6 +1416,37 @@ export class DnrBridge {
 
         session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
             const responseHeaders = details.responseHeaders || {};
+            let initiatorOrigin = '';
+            try {
+                if (details.referrer && details.referrer !== 'null') {
+                    initiatorOrigin = new URL(details.referrer).origin;
+                }
+            } catch (err) {
+                initiatorOrigin = '';
+            }
+            if ((!initiatorOrigin || initiatorOrigin === 'null') && details.webContents && !details.webContents.isDestroyed()) {
+                try {
+                    initiatorOrigin = new URL(details.webContents.getURL()).origin;
+                } catch (err) {
+                    initiatorOrigin = '';
+                }
+            }
+            if (initiatorOrigin.startsWith('chrome-extension://')) {
+                const hasAcao = Object.keys(responseHeaders).some((k) => k.toLowerCase() === 'access-control-allow-origin');
+                if (!hasAcao) {
+                    responseHeaders['Access-Control-Allow-Origin'] = ['*'];
+                }
+                if (details.method === 'OPTIONS') {
+                    const hasMethods = Object.keys(responseHeaders).some((k) => k.toLowerCase() === 'access-control-allow-methods');
+                    if (!hasMethods) {
+                        responseHeaders['Access-Control-Allow-Methods'] = ['GET, POST, PUT, DELETE, PATCH, OPTIONS'];
+                    }
+                    const hasHeaders = Object.keys(responseHeaders).some((k) => k.toLowerCase() === 'access-control-allow-headers');
+                    if (!hasHeaders) {
+                        responseHeaders['Access-Control-Allow-Headers'] = ['*'];
+                    }
+                }
+            }
             if (details.resourceType === 'mainFrame') {
                 try {
                     const urlObj = new URL(details.url);
