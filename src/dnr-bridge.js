@@ -32,7 +32,8 @@ function matchPatternToRegex(pattern) {
     return new RegExp('^' + schemeRe + '://' + hostRe + pathRe);
 }
 
-function getInitiatorDomain(details) {    let origin = '';
+function getInitiatorDomain(details) {
+    let origin = '';
     if (details.referrer) {
         try {
             origin = new URL(details.referrer).origin;
@@ -46,6 +47,9 @@ function getInitiatorDomain(details) {    let origin = '';
         } catch (err) {
             origin = '';
         }
+    }
+    if (!origin) {
+        return 'chrome-extension-unknown';
     }
     if (origin.startsWith('chrome-extension://')) {
         return origin.replace('chrome-extension://', '').split('/')[0];
@@ -63,7 +67,7 @@ function getInitiatorDomain(details) {    let origin = '';
 function domainMatches(host, domainList) {
     for (const domain of domainList) {
         if (domain === 'chrome-extension') {
-            if (/^[a-p]{32}$/.test(host)) {
+            if (/^[a-p]{32}$/.test(host) || host === 'chrome-extension-unknown') {
                 return true;
             }
             continue;

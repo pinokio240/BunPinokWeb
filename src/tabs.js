@@ -515,7 +515,13 @@ export class TabManager {
     toggleDevTools(tabId) {
         const tab = this.tabs.get(tabId);
         if (!tab) {
+            if (this.logger) {
+                this.logger.warn('devtools', 'toggleDevTools: вкладка не найдена (id=' + tabId + ')');
+            }
             return;
+        }
+        if (this.logger) {
+            this.logger.info('devtools', 'toggleDevTools: ' + tab.url + ' (opened=' + tab.view.webContents.isDevToolsOpened() + ')');
         }
         if (tab.view.webContents.isDevToolsOpened()) {
             tab.view.webContents.closeDevTools();
