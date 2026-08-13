@@ -326,31 +326,35 @@ const COMPAT_SHIM = `(function () {
         };
     }
     if (!chrome.declarativeNetRequest) {
+        const dnrUpdate = function (options, cb) {
+            const payload = {
+                addRules: options && options.addRules ? options.addRules : [],
+                removeRuleIds: options && options.removeRuleIds ? options.removeRuleIds : []
+            };
+            try { console.log('[bunpinok-shim] DNR update: ' + JSON.stringify(payload).slice(0, 220)); } catch (err) { }
+            const promise = fetch('http://127.0.0.1:33123/rules', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(function () { return undefined; }).catch(function () { return undefined; });
+            if (cb) {
+                promise.then(function () { cb(); });
+                return undefined;
+            }
+            return promise;
+        };
+        const dnrGet = function (cb) {
+            if (cb) {
+                cb([]);
+                return undefined;
+            }
+            return Promise.resolve([]);
+        };
         chrome.declarativeNetRequest = {
-            updateDynamicRules: function (options, cb) {
-                const payload = {
-                    addRules: options && options.addRules ? options.addRules : [],
-                    removeRuleIds: options && options.removeRuleIds ? options.removeRuleIds : []
-                };
-                fetch('http://127.0.0.1:33123/rules', {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(payload)
-                }).then(() => { if (cb) { cb(); } }).catch(() => { if (cb) { cb(); } });
-            },
-            updateSessionRules: function (options, cb) {
-                const payload = {
-                    addRules: options && options.addRules ? options.addRules : [],
-                    removeRuleIds: options && options.removeRuleIds ? options.removeRuleIds : []
-                };
-                fetch('http://127.0.0.1:33123/rules', {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(payload)
-                }).then(() => { if (cb) { cb(); } }).catch(() => { if (cb) { cb(); } });
-            },
-            getDynamicRules: function (cb) { if (cb) { cb([]); } },
-            getSessionRules: function (cb) { if (cb) { cb([]); } },
+            updateDynamicRules: dnrUpdate,
+            updateSessionRules: dnrUpdate,
+            getDynamicRules: dnrGet,
+            getSessionRules: dnrGet,
             setExtensionActionOptions: function (options, cb) { if (cb) { cb(); } }
         };
     }
@@ -421,30 +425,46 @@ const COMPAT_SHIM = `(function () {
                 CLIPBOARD: 'CLIPBOARD'
             },
             createDocument: function (options, cb) {
+                try { console.log('[bunpinok-shim] offscreen.createDocument: ' + JSON.stringify(options)); } catch (err) { }
                 const relativeUrl = options && options.url ? options.url : 'offscreen.html';
                 const fullUrl = chrome.runtime.getURL(relativeUrl);
                 const extId = chrome.runtime.id;
-                fetch('http://127.0.0.1:33123/offscreen', {
+                const promise = fetch('http://127.0.0.1:33123/offscreen', {
                     method: 'POST',
                     headers: { 'content-type': 'application/json' },
                     body: JSON.stringify({ extId: extId, url: fullUrl })
-                }).then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
+                }).then(function () { return undefined; }).catch(function () { return undefined; });
+                if (cb) {
+                    promise.then(function () { cb(); });
+                    return undefined;
+                }
+                return promise;
             },
             closeDocument: function (cb) {
                 const extId = chrome.runtime.id;
-                fetch('http://127.0.0.1:33123/offscreen-close', {
+                const promise = fetch('http://127.0.0.1:33123/offscreen-close', {
                     method: 'POST',
                     headers: { 'content-type': 'application/json' },
                     body: JSON.stringify({ extId: extId })
-                }).then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
+                }).then(function () { return undefined; }).catch(function () { return undefined; });
+                if (cb) {
+                    promise.then(function () { cb(); });
+                    return undefined;
+                }
+                return promise;
             },
             hasDocument: function (cb) {
                 const extId = chrome.runtime.id;
-                fetch('http://127.0.0.1:33123/offscreen-has', {
+                const promise = fetch('http://127.0.0.1:33123/offscreen-has', {
                     method: 'POST',
                     headers: { 'content-type': 'application/json' },
                     body: JSON.stringify({ extId: extId })
-                }).then(function (r) { return r.json(); }).then(function (data) { if (cb) { cb(data && data.has === true); } }).catch(function () { if (cb) { cb(false); } });
+                }).then(function (r) { return r.json(); }).then(function (data) { return data && data.has === true; }).catch(function () { return false; });
+                if (cb) {
+                    promise.then(function (result) { cb(result); });
+                    return undefined;
+                }
+                return promise;
             }
         };
     }

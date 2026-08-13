@@ -1150,6 +1150,9 @@ export class DnrBridge {
         });
 
         session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+            if (this.logger && (details.url.includes('login.vk') || details.url.includes('api.vk.ru') || details.url.includes('al_audio.php'))) {
+                this.logger.info('vkreq', details.method + ' ' + details.url.slice(0, 160) + ' initiator=' + getInitiatorDomain(details));
+            }
             const headers = {};
             for (const key of Object.keys(details.requestHeaders)) {
                 headers[key] = details.requestHeaders[key];
