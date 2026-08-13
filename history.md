@@ -1,5 +1,28 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.8.3 — ГЛАВНЫЙ БАГ НАЙДЕН: Electron держит только последний webRequest-listener
+
+### Симптом
+- VK Music Player: «Code №5 - User authorization failed: client_secret is incorrect»
+- web_token-запрос к login.vk.ru уходил БЕЗ подмены Origin (в логе ни одной строки `[dnr]`)
+- Расширение не переходило к авторизации
+
+### Диагноз (проверено тестом)
+- **Electron держит только ОДИН listener на каждое событие webRequest** — последняя регистрация молча заменяет предыдущую (тест с двумя listener'ами: срабатывает только второй)
+- `PrivacyShield.setup()` регистрировал `onBeforeRequest` ПОСЛЕ `DnrBridge` → мост расширений (webRequest blocking) мёртв с v0.6.0
+- DNT-хендлер в main.js регистрировал `onBeforeSendHeaders` ПОСЛЕ `DnrBridge` → **все DNR-правила (Origin-спуф) мертвы с v0.5.5!**
+- Итог: web_token и al_audio.php шли с Origin `chrome-extension://` → VK отклонял с вводящим в заблуждение «client_secret is incorrect»
+
+### Fix
+- [x] `dnr-bridge.js`: единый диспетчер — один реальный listener на событие + цепочки `beforeRequestHandlers` / `beforeSendHeadersHandlers` (`addOnBeforeRequestHandler` / `addOnBeforeSendHeadersHandler`)
+- [x] `privacy-shield.js`: `setup(dispatcher)` — адблок/HTTPS-редирект через цепочку (порядок: сначала shield, потом DNR-мост)
+- [x] `main.js`: DNT через цепочку (мутация headers в том же объекте)
+- [x] В кодовой базе больше НЕТ прямых `webRequest.on*` вне диспетчера (grep: только dnr-bridge.js)
+- [x] Теперь работают одновременно: адблок, HTTPS-only, DNT, DNR-правила расширений, встроенные VK-правила 9001-9003, webRequest-мост расширений
+
+### Проверка пользователем
+Перезапустить браузер → открыть аудио VK. В логе должны появиться `[dnr] Правило VK применено к https://login.vk.ru...` и `...api.vk.ru...`. Ошибка №5 должна уйти.
+
 ## 2026-08-13 — v0.8.2 — VK Music Player: shim-фиксы + встроенные VK DNR-правила
 
 ### Симптомы (свежий лог)
