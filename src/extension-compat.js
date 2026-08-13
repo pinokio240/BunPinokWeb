@@ -205,6 +205,17 @@ const COMPAT_SHIM = `(function () {
     }
     if (!chrome.offscreen) {
         chrome.offscreen = {
+            Reason: {
+                AUDIO_PLAYBACK: 'AUDIO_PLAYBACK',
+                USER_MEDIA: 'USER_MEDIA',
+                DISPLAY_MEDIA: 'DISPLAY_MEDIA',
+                DOM_SCRAPING: 'DOM_SCRAPING',
+                BLOBS: 'BLOBS',
+                LOCAL_STORAGE: 'LOCAL_STORAGE',
+                WORKERS: 'WORKERS',
+                IFRAME_SCRIPTING: 'IFRAME_SCRIPTING',
+                CLIPBOARD: 'CLIPBOARD'
+            },
             createDocument: function (options, cb) {
                 const relativeUrl = options && options.url ? options.url : 'offscreen.html';
                 const fullUrl = chrome.runtime.getURL(relativeUrl);
@@ -223,8 +234,19 @@ const COMPAT_SHIM = `(function () {
                     body: JSON.stringify({ extId: extId })
                 }).then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
             },
-            hasDocument: function (cb) { if (cb) { cb(false); } },
-            REASON: {
+            hasDocument: function (cb) {
+                const extId = chrome.runtime.id;
+                fetch('http://127.0.0.1:33123/offscreen-has', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ extId: extId })
+                }).then(function (r) { return r.json(); }).then(function (data) { if (cb) { cb(data && data.has === true); } }).catch(function () { if (cb) { cb(false); } });
+            }
+        };
+        chrome.offscreen.REASON = chrome.offscreen.Reason;
+    } else {
+        if (!chrome.offscreen.Reason) {
+            chrome.offscreen.Reason = {
                 AUDIO_PLAYBACK: 'AUDIO_PLAYBACK',
                 USER_MEDIA: 'USER_MEDIA',
                 DISPLAY_MEDIA: 'DISPLAY_MEDIA',
@@ -234,7 +256,38 @@ const COMPAT_SHIM = `(function () {
                 WORKERS: 'WORKERS',
                 IFRAME_SCRIPTING: 'IFRAME_SCRIPTING',
                 CLIPBOARD: 'CLIPBOARD'
-            }
+            };
+        }
+        if (!chrome.offscreen.REASON) {
+            chrome.offscreen.REASON = chrome.offscreen.Reason;
+        }
+    }
+    if (!chrome.runtime.ContextType) {
+        chrome.runtime.ContextType = {
+            BACKGROUND: 'BACKGROUND',
+            EXTENSION_SERVICE_WORKER: 'SERVICE_WORKER',
+            OFFSCREEN_DOCUMENT: 'OFFSCREEN_DOCUMENT',
+            POPUP: 'POPUP',
+            TAB: 'TAB',
+            WINDOW: 'WINDOW',
+            SIDE_PANEL: 'SIDE_PANEL'
+        };
+    }
+    if (!chrome.runtime.getContexts) {
+        chrome.runtime.getContexts = function (filter) {
+            const extId = chrome.runtime.id;
+            return fetch('http://127.0.0.1:33123/offscreen-has', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ extId: extId })
+            }).then(function (r) { return r.json(); }).then(function (data) {
+                if (data && data.has === true) {
+                    return [{ contextType: 'OFFSCREEN_DOCUMENT', documentUrl: chrome.runtime.getURL('offscreen.html') }];
+                }
+                return [];
+            }).catch(function () {
+                return [];
+            });
         };
     }
     if (!chrome.scripting) {

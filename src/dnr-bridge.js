@@ -112,6 +112,13 @@ export class DnrBridge {
                         this._json(res, { success: true });
                         return;
                     }
+                    if (req.method === 'POST' && req.url === '/offscreen-has') {
+                        const payload = JSON.parse(body);
+                        const win = this.offscreenWindows.get(payload.extId);
+                        const has = win !== undefined && !win.isDestroyed();
+                        this._json(res, { has: has });
+                        return;
+                    }
                     res.writeHead(404);
                     res.end();
                 } catch (err) {

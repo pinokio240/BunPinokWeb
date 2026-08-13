@@ -530,7 +530,7 @@ export class TabManager {
         if (tab.view.webContents.isDevToolsOpened()) {
             tab.view.webContents.closeDevTools();
         } else {
-            tab.view.webContents.openDevTools({ mode: 'detach' });
+            tab.view.webContents.openDevTools({ mode: 'bottom', activate: true });
         }
     }
 
@@ -557,11 +557,7 @@ export class TabManager {
             }
         };
         if (!wc.isDevToolsOpened()) {
-            const devtoolsWc = wc.devToolsWebContents;
-            if (devtoolsWc && !devtoolsWc.isDestroyed() && devtoolsWc.isLoading()) {
-                devtoolsWc.once('did-finish-load', doInspect);
-            }
-            wc.openDevTools({ mode: 'detach', activate: true });
+            wc.openDevTools({ mode: 'bottom', activate: true });
             setTimeout(doInspect, 1500);
         } else {
             doInspect();
