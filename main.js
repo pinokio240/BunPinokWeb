@@ -1133,7 +1133,6 @@ app.whenReady().then(async () => {
     logger = new Logger();
     dnrBridge.setLogger(logger);
     logger.info('main', '=== BunPinokWeb запущен v' + app.getVersion() + ' ===');
-    logger.info('main', '=== BunPinokWeb запущен v' + app.getVersion() + ' ===');
     permissionDialogManager = new PermissionDialogManager();
     passwordStore = new PasswordStore();
     authDialogManager = new AuthDialogManager();
