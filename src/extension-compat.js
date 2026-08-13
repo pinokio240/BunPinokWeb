@@ -185,29 +185,133 @@ const COMPAT_SHIM = `(function () {
         chrome.action.getPopup = function (d, cb) { if (cb) { cb(''); } };
         chrome.action.onClicked = { addListener: function () {}, removeListener: function () {} };
     }
-    if (!chrome.storage) {
-        chrome.storage = {
-            local: {
-                get: function (keys, cb) { if (cb) { cb({}); } },
-                set: function (items, cb) { if (cb) { cb(); } },
-                remove: function (keys, cb) { if (cb) { cb(); } },
-                clear: function (cb) { if (cb) { cb(); } }
-            },
-            sync: {
-                get: function (keys, cb) { if (cb) { cb({}); } },
-                set: function (items, cb) { if (cb) { cb(); } },
-                remove: function (keys, cb) { if (cb) { cb(); } },
-                clear: function (cb) { if (cb) { cb(); } }
-            },
-            onChanged: { addListener: function () {}, removeListener: function () {} }
+    (function () {
+        const storageExtId = chrome.runtime.id;
+        const storageBridge = 'http://127.0.0.1:33123';
+        const storageListeners = [];
+        const storageCall = function (area, action, payload) {
+            return fetch(storageBridge + '/storage-' + action, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ extId: storageExtId, area: area, payload: payload || {} })
+            }).then(function (r) { return r.json(); }).catch(function () { return { data: {} }; });
         };
-    }
-    if (chrome.storage && !chrome.storage.sync && chrome.storage.local) {
-        chrome.storage.sync = chrome.storage.local;
-        if (!chrome.storage.sync.onChanged) {
-            chrome.storage.sync.onChanged = chrome.storage.onChanged || { addListener: function () {}, removeListener: function () {} };
-        }
-    }
+        const storageNotify = function (changes, area) {
+            if (storageListeners.length === 0) {
+                return;
+            }
+            for (const listener of storageListeners) {
+                try { listener(changes, area); } catch (err) { }
+            }
+        };
+        const storageMakeArea = function (area) {
+            const get = function (keys, cb) {
+                let query = null;
+                let defaults = null;
+                if (keys === null || typeof keys === 'undefined') {
+                    query = null;
+                } else if (typeof keys === 'string') {
+                    query = [keys];
+                } else if (Array.isArray(keys)) {
+                    query = keys;
+                } else if (typeof keys === 'object') {
+                    query = Object.keys(keys);
+                    defaults = keys;
+                }
+                const promise = storageCall(area, 'get', { keys: query }).then(function (result) {
+                    const data = result && result.data ? result.data : {};
+                    if (defaults) {
+                        for (const key of Object.keys(defaults)) {
+                            if (typeof data[key] === 'undefined') {
+                                data[key] = defaults[key];
+                            }
+                        }
+                    }
+                    if (cb) { cb(data); }
+                    return data;
+                });
+                if (cb) {
+                    return undefined;
+                }
+                return promise;
+            };
+            const set = function (items, cb) {
+                const itemsToSet = items || {};
+                const changes = {};
+                for (const key of Object.keys(itemsToSet)) {
+                    changes[key] = { newValue: itemsToSet[key] };
+                }
+                const promise = storageCall(area, 'set', { items: itemsToSet }).then(function () {
+                    storageNotify(changes, area);
+                    if (cb) { cb(); }
+                });
+                if (cb) {
+                    return undefined;
+                }
+                return promise;
+            };
+            const remove = function (keys, cb) {
+                let list = [];
+                if (typeof keys === 'string') {
+                    list = [keys];
+                }
+                if (Array.isArray(keys)) {
+                    list = keys;
+                }
+                const changes = {};
+                for (const key of list) {
+                    changes[key] = {};
+                }
+                const promise = storageCall(area, 'remove', { keys: list }).then(function () {
+                    storageNotify(changes, area);
+                    if (cb) { cb(); }
+                });
+                if (cb) {
+                    return undefined;
+                }
+                return promise;
+            };
+            const clear = function (cb) {
+                const promise = storageCall(area, 'clear', {}).then(function () {
+                    storageNotify({}, area);
+                    if (cb) { cb(); }
+                });
+                if (cb) {
+                    return undefined;
+                }
+                return promise;
+            };
+            const getBytesInUse = function (keys, cb) {
+                if (typeof keys === 'function') {
+                    cb = keys;
+                }
+                if (cb) { cb(0); }
+                return Promise.resolve(0);
+            };
+            return {
+                get: get,
+                set: set,
+                remove: remove,
+                clear: clear,
+                getBytesInUse: getBytesInUse,
+                QUOTA_BYTES: 10485760,
+                QUOTA_BYTES_PER_ITEM: 8192
+            };
+        };
+        const storageBase = chrome.storage || {};
+        storageBase.local = storageMakeArea('local');
+        storageBase.sync = storageMakeArea('sync');
+        storageBase.session = storageMakeArea('session');
+        storageBase.onChanged = {
+            addListener: function (fn) { storageListeners.push(fn); },
+            removeListener: function (fn) {
+                const idx = storageListeners.indexOf(fn);
+                if (idx >= 0) { storageListeners.splice(idx, 1); }
+            },
+            hasListener: function (fn) { return storageListeners.indexOf(fn) >= 0; }
+        };
+        chrome.storage = storageBase;
+    })();
     if (!chrome.alarms) {
         chrome.alarms = {
             create: function (name, info) {},

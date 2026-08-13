@@ -16,6 +16,11 @@ process.on('warning', (warning) => {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+    app.quit();
+}
+
 import { OmniboxParser } from './src/omnibox.js';
 import { TabManager } from './src/tabs.js';
 import { SettingsStore } from './src/settings-store.js';

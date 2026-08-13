@@ -282,6 +282,59 @@ export class DnrBridge {
                         this._json(res, this._identityResult(launchId));
                         return;
                     }
+                    if (req.method === 'POST' && req.url === '/storage-get') {
+                        const payload = JSON.parse(body);
+                        const extId = payload.extId || '';
+                        const area = payload.area || 'local';
+                        const data = this._storageLoad(extId, area);
+                        const keys = payload.payload && Array.isArray(payload.payload.keys) ? payload.payload.keys : null;
+                        if (keys === null) {
+                            this._json(res, { data: data });
+                        } else {
+                            const out = {};
+                            for (const key of keys) {
+                                if (typeof data[key] !== 'undefined') {
+                                    out[key] = data[key];
+                                }
+                            }
+                            this._json(res, { data: out });
+                        }
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/storage-set') {
+                        const payload = JSON.parse(body);
+                        const extId = payload.extId || '';
+                        const area = payload.area || 'local';
+                        const data = this._storageLoad(extId, area);
+                        const items = payload.payload && payload.payload.items ? payload.payload.items : {};
+                        for (const key of Object.keys(items)) {
+                            data[key] = items[key];
+                        }
+                        this._storageSave(extId, area, data);
+                        this._json(res, { success: true });
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/storage-remove') {
+                        const payload = JSON.parse(body);
+                        const extId = payload.extId || '';
+                        const area = payload.area || 'local';
+                        const data = this._storageLoad(extId, area);
+                        const keys = payload.payload && Array.isArray(payload.payload.keys) ? payload.payload.keys : [];
+                        for (const key of keys) {
+                            delete data[key];
+                        }
+                        this._storageSave(extId, area, data);
+                        this._json(res, { success: true });
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/storage-clear') {
+                        const payload = JSON.parse(body);
+                        const extId = payload.extId || '';
+                        const area = payload.area || 'local';
+                        this._storageSave(extId, area, {});
+                        this._json(res, { success: true });
+                        return;
+                    }
                     res.writeHead(404);
                     res.end();
                 } catch (err) {
@@ -750,6 +803,41 @@ export class DnrBridge {
             return result;
         }
         return { pending: true };
+    }
+
+    _storageFilePath(extId, area) {
+        const dir = path.join(app.getPath('userData'), 'extension-storage');
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        return path.join(dir, extId + '.' + area + '.json');
+    }
+
+    _storageLoad(extId, area) {
+        try {
+            const filePath = this._storageFilePath(extId, area);
+            if (fs.existsSync(filePath)) {
+                const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    return parsed;
+                }
+            }
+        } catch (err) {
+            if (this.logger) {
+                this.logger.error('storage', 'Не удалось прочитать хранилище ' + extId + '.' + area + ': ' + err.message);
+            }
+        }
+        return {};
+    }
+
+    _storageSave(extId, area, data) {
+        try {
+            fs.writeFileSync(this._storageFilePath(extId, area), JSON.stringify(data), 'utf-8');
+        } catch (err) {
+            if (this.logger) {
+                this.logger.error('storage', 'Не удалось сохранить хранилище ' + extId + '.' + area + ': ' + err.message);
+            }
+        }
     }
 
     _handleDownload(payload) {

@@ -388,6 +388,20 @@ export class ExtensionManager {
             }
         }
 
+        try {
+            const bridgeDir = path.join(userData, 'extension-storage');
+            if (fs.existsSync(bridgeDir)) {
+                const bridgeFiles = fs.readdirSync(bridgeDir);
+                for (const file of bridgeFiles) {
+                    if (file.startsWith(extId + '.')) {
+                        fs.rmSync(path.join(bridgeDir, file), { force: true });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Не удалось удалить bridge-хранилище расширения:', err);
+        }
+
         const sweepRoots = [
             path.join(userData, 'IndexedDB'),
             path.join(userData, 'Service Worker'),
