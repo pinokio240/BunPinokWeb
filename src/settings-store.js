@@ -30,7 +30,11 @@ const DEFAULT_SETTINGS = {
     'search.engine': 'google',
     'system.hardwareAcceleration': true,
     'system.proxyMode': 'system',
-    'system.proxyServer': ''
+    'system.proxyServer': '',
+    'autofill.name': '',
+    'autofill.email': '',
+    'autofill.phone': '',
+    'autofill.address': ''
 };
 
 export class SettingsStore {

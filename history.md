@@ -1,5 +1,14 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.5.2 — Autofill (Автозаполнение форм)
+
+### Completed
+- [x] Настройки: раздел «Автозаполнение» (имя/email/телефон/адрес)
+- [x] Контекстное меню в полях форм: «Автозаполнить форму»
+- [x] Заполнение по атрибутам: name/id/autocomplete/placeholder (рус. + англ. паттерны)
+- [x] События input/change dispatch (совместимость с JS-фреймворками)
+- [x] Default settings: autofill.name/email/phone/address
+
 ## 2026-08-13 — v0.5.1 — Site Permissions (индивидуальные разрешения)
 
 ### Completed

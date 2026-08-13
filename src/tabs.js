@@ -275,6 +275,8 @@ export class TabManager {
             template.push({ label: 'Копировать', role: 'copy', enabled: params.editFlags.canCopy });
             template.push({ label: 'Вставить', role: 'paste', enabled: params.editFlags.canPaste });
             template.push({ label: 'Выделить всё', role: 'selectAll', enabled: params.editFlags.canSelectAll });
+            template.push({ type: 'separator' });
+            template.push({ label: 'Автозаполнить форму', click: () => { this._autofillForm(tab); } });
         }
 
         if (params.selectionText) {
@@ -316,6 +318,60 @@ export class TabManager {
 
     _copyToClipboard(text) {
         clipboard.writeText(text);
+    }
+
+    _autofillForm(tab) {
+        if (!this.settingsStore) {
+            return;
+        }
+        const data = {
+            name: this.settingsStore.get('autofill.name', ''),
+            email: this.settingsStore.get('autofill.email', ''),
+            phone: this.settingsStore.get('autofill.phone', ''),
+            address: this.settingsStore.get('autofill.address', '')
+        };
+        const hasData = data.name || data.email || data.phone || data.address;
+        if (!hasData) {
+            return;
+        }
+        const script = `(() => {
+            const data = ${JSON.stringify(data)};
+            const fields = document.querySelectorAll('input, textarea');
+            let filled = 0;
+            const setValue = (field, value) => {
+                field.focus();
+                field.value = value;
+                field.dispatchEvent(new Event('input', { bubbles: true }));
+                field.dispatchEvent(new Event('change', { bubbles: true }));
+                filled += 1;
+            };
+            for (const field of fields) {
+                if (field.value && field.value.trim()) {
+                    continue;
+                }
+                const attr = ((field.name || '') + ' ' + (field.id || '') + ' ' + (field.getAttribute('autocomplete') || '') + ' ' + (field.placeholder || '')).toLowerCase();
+                if (!field.value && data.name && /name|fullname|fio|имя|фио|ваше имя/.test(attr)) {
+                    setValue(field, data.name);
+                    continue;
+                }
+                if (data.email && /email|mail|почта|e-mail/.test(attr)) {
+                    setValue(field, data.email);
+                    continue;
+                }
+                if (data.phone && /phone|tel|телефон|mobile/.test(attr)) {
+                    setValue(field, data.phone);
+                    continue;
+                }
+                if (data.address && /address|street|addr|адрес|улица/.test(attr)) {
+                    setValue(field, data.address);
+                    continue;
+                }
+            }
+            return filled;
+        })()`;
+        tab.view.webContents.executeJavaScript(script).then((filled) => {
+            this._notifyUpdate();
+        }).catch(() => {});
     }
 
     closeTab(tabId) {

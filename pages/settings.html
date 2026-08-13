@@ -76,6 +76,7 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
     <div class="nav-item" data-panel="search"><span class="nav-icon">🔍</span> Поисковая система</div>
     <div class="nav-item" data-panel="languages"><span class="nav-icon">🌐</span> Языки</div>
     <div class="nav-item" data-panel="downloads"><span class="nav-icon">⬇️</span> Загрузки</div>
+    <div class="nav-item" data-panel="autofill"><span class="nav-icon">📋</span> Автозаполнение</div>
     <div class="nav-item" data-panel="notifications"><span class="nav-icon">🔔</span> Уведомления</div>
     <div class="nav-group-label">Безопасность</div>
     <div class="nav-item" data-panel="privacy"><span class="nav-icon">🛡️</span> Конфиденциальность</div>
@@ -250,6 +251,43 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
             <option value="true">Вкл.</option>
             <option value="false">Выкл.</option>
           </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-autofill">
+      <h2>Автозаполнение</h2>
+      <div class="section">
+        <div class="section-title">Контактные данные</div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">Имя / ФИО</div>
+          </div>
+          <input type="text" id="autofill-name" placeholder="Иван Иванов" style="width:260px">
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">E-mail</div>
+          </div>
+          <input type="text" id="autofill-email" placeholder="mail@example.com" style="width:260px">
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">Телефон</div>
+          </div>
+          <input type="text" id="autofill-phone" placeholder="+7 900 000-00-00" style="width:260px">
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">Адрес</div>
+          </div>
+          <input type="text" id="autofill-address" placeholder="Город, улица, дом" style="width:260px">
+        </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title" style="font-weight:400">Заполнение форм</div>
+            <div class="desc">Правый клик по полю формы на сайте → «Автозаполнить форму»</div>
+          </div>
         </div>
       </div>
     </div>
@@ -550,6 +588,11 @@ async function loadSettings() {
     proxyServer = all['system.proxyServer'];
   }
   document.getElementById('setting-proxyserver').value = proxyServer;
+
+  document.getElementById('autofill-name').value = all['autofill.name'] || '';
+  document.getElementById('autofill-email').value = all['autofill.email'] || '';
+  document.getElementById('autofill-phone').value = all['autofill.phone'] || '';
+  document.getElementById('autofill-address').value = all['autofill.address'] || '';
 }
 
 function bindChange(id, key, transform) {
@@ -621,6 +664,11 @@ bindChange('privacy-geolocation', 'privacy.geolocation');
 bindChange('privacy-camera', 'privacy.camera');
 bindChange('privacy-microphone', 'privacy.microphone');
 bindChange('privacy-popups', 'privacy.popups');
+
+bindChange('autofill-name', 'autofill.name', 'trim');
+bindChange('autofill-email', 'autofill.email', 'trim');
+bindChange('autofill-phone', 'autofill.phone', 'trim');
+bindChange('autofill-address', 'autofill.address', 'trim');
 
 document.getElementById('dnt-toggle').addEventListener('click', async () => {
   const all = await window.browserAPI.settings.getAll();
