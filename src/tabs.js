@@ -104,6 +104,9 @@ export class TabManager {
             tab.url = navUrl;
             tab.http2Retried = false;
             tab.httpsRetried = false;
+            if (this.logger) {
+                this.logger.info('nav', 'Переход: ' + navUrl);
+            }
             if (this.historyStore) {
                 this.historyStore.add(navUrl, tab.title);
             }
@@ -135,19 +138,6 @@ export class TabManager {
                 }
                 this.logger.log(level >= 2 ? 'error' : 'info', 'console:' + sourceId, text + ' (строка ' + line + ')');
             }
-        });
-
-        view.webContents.on('did-navigate', (_event, navUrl) => {
-            tab.url = navUrl;
-            tab.http2Retried = false;
-            tab.httpsRetried = false;
-            if (this.logger) {
-                this.logger.info('nav', 'Переход: ' + navUrl);
-            }
-            if (this.historyStore) {
-                this.historyStore.add(navUrl, tab.title);
-            }
-            this._notifyUpdate();
         });
 
         view.webContents.on('did-fail-load', (_event, _errorCode, errorDescription, validatedURL, isMainFrame) => {
