@@ -520,13 +520,46 @@ export class TabManager {
             }
             return;
         }
+        const wc = tab.view.webContents;
+        const dtOpen = tab.devToolsOpen === true || wc.isDevToolsOpened();
         if (this.logger) {
-            this.logger.info('devtools', 'toggleDevTools: ' + tab.url + ' (opened=' + tab.view.webContents.isDevToolsOpened() + ')');
+            this.logger.info('devtools', 'toggleDevTools: ' + tab.url + ' (opened=' + dtOpen + ')');
         }
-        if (tab.view.webContents.isDevToolsOpened()) {
-            tab.view.webContents.closeDevTools();
+        if (dtOpen) {
+            tab.devToolsOpen = false;
+            wc.closeDevTools();
         } else {
-            tab.view.webContents.openDevTools({ mode: 'detach', activate: true });
+            tab.devToolsOpen = true;
+            wc.once('devtools-closed', () => {
+                tab.devToolsOpen = false;
+            });
+            wc.once('devtools-opened', () => {
+                this._showDevToolsWindow(wc);
+            });
+            try {
+                wc.openDevTools({ mode: 'detach', activate: true });
+            } catch (err) {
+                tab.devToolsOpen = false;
+                if (this.logger) {
+                    this.logger.error('devtools', 'Не удалось открыть DevTools: ' + err.message);
+                }
+            }
+        }
+    }
+
+    _showDevToolsWindow(wc) {
+        try {
+            const dt = wc.devToolsWebContents;
+            if (dt && !dt.isDestroyed()) {
+                const dtWin = BrowserWindow.fromWebContents(dt);
+                if (dtWin && !dtWin.isDestroyed()) {
+                    dtWin.show();
+                    dtWin.moveTop();
+                    dtWin.focus();
+                }
+            }
+        } catch (err) {
+            // окно DevTools недоступно — пропускаем
         }
     }
 
@@ -558,20 +591,9 @@ export class TabManager {
             }
         };
         const showDevToolsWindow = () => {
-            try {
-                const dt = wc.devToolsWebContents;
-                if (dt && !dt.isDestroyed()) {
-                    const dtWin = BrowserWindow.fromWebContents(dt);
-                    if (dtWin && !dtWin.isDestroyed()) {
-                        dtWin.show();
-                        dtWin.focus();
-                    }
-                }
-            } catch (err) {
-                // окно DevTools недоступно — пропускаем
-            }
+            this._showDevToolsWindow(wc);
         };
-        if (!wc.isDevToolsOpened()) {
+        if (!wc.isDevToolsOpened() && tab.devToolsOpen !== true) {
             wc.once('devtools-opened', () => {
                 showDevToolsWindow();
                 setTimeout(doInspect, 800);

@@ -34,21 +34,21 @@ function matchPatternToRegex(pattern) {
 
 function getInitiatorDomain(details) {
     let origin = '';
-    if (details.referrer) {
+    if (details.referrer && details.referrer !== 'null') {
         try {
             origin = new URL(details.referrer).origin;
         } catch (err) {
             origin = '';
         }
     }
-    if (!origin && details.webContents && !details.webContents.isDestroyed()) {
+    if ((!origin || origin === 'null') && details.webContents && !details.webContents.isDestroyed()) {
         try {
             origin = new URL(details.webContents.getURL()).origin;
         } catch (err) {
             origin = '';
         }
     }
-    if (!origin) {
+    if (!origin || origin === 'null') {
         return 'chrome-extension-unknown';
     }
     if (origin.startsWith('chrome-extension://')) {
