@@ -23,9 +23,14 @@ export class TabManager {
         this.settingsStore = null;
         this.readerHandler = null;
         this.chromeExtensions = null;
+        this.logger = null;
         this.pageZoomFactor = 1.0;
         this.defaultFontSize = 16;
         this._setupAutoUpdate();
+    }
+
+    setLogger(logger) {
+        this.logger = logger;
     }
 
     setChromeExtensions(instance) {
@@ -106,7 +111,28 @@ export class TabManager {
             this._notifyUpdate();
         });
 
+        view.webContents.on('render-process-gone', (_event, details) => {
+            if (this.logger) {
+                this.logger.error('renderer', 'Процесс рендеринга завершился: ' + details.reason + ' (код ' + details.exitCode + ') для ' + tab.url);
+            }
+        });
+
+        view.webContents.on('unresponsive', () => {
+            if (this.logger) {
+                this.logger.warn('renderer', 'Вкладка перестала отвечать: ' + tab.url);
+            }
+        });
+
+        view.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+            if (this.logger) {
+                this.logger.log(level >= 2 ? 'error' : 'info', 'console:' + sourceId, message + ' (строка ' + line + ')');
+            }
+        });
+
         view.webContents.on('did-fail-load', (_event, _errorCode, errorDescription, validatedURL, isMainFrame) => {
+            if (isMainFrame && this.logger) {
+                this.logger.error('net', 'Не удалось загрузить ' + validatedURL + ': ' + errorDescription);
+            }
             if (!isMainFrame || !validatedURL || !errorDescription) {
                 return;
             }

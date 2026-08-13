@@ -1,5 +1,20 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.3 — Logging System (Журнал)
+
+### Completed
+- [x] src/logger.js: файл-журнал userData/logs/bunpinokweb.log (ротация 5MB)
+- [x] Захват console-message всех вкладок (ошибки контент-скриптов расширений!)
+- [x] did-fail-load, render-process-gone, unresponsive → в журнал
+- [x] Логи установки расширений
+- [x] Логи Chromium: --enable-logging → userData/logs/chromium.log (Extension Error и т.п.)
+- [x] browser://logs: просмотр в реальном времени (2с), автопрокрутка, очистка, пути файлов
+- [x] ⋮ меню: «Журнал браузера»
+
+### Как отправить логи разработчику
+1. ⋮ → Журнал браузера → скопировать текст
+2. Или файлы: %APPDATA%\bunpinokweb\logs\bunpinokweb.log и chromium.log
+
 ## 2026-08-13 — v0.6.2 — AMO (Firefox) Store Install + Adblock Expansion
 
 ### Completed

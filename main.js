@@ -34,6 +34,7 @@ import { SessionStore } from './src/session-store.js';
 import { DnrBridge } from './src/dnr-bridge.js';
 import { PrivacyShield } from './src/privacy-shield.js';
 import { ElectronChromeExtensions } from 'electron-chrome-extensions';
+import { Logger } from './src/logger.js';
 
 let mainWindow = null;
 let chromeView = null;
@@ -54,6 +55,7 @@ let sessionStore = null;
 let dnrBridge = null;
 let privacyShield = null;
 let chromeExtensions = null;
+let logger = null;
 let bookmarksBarVisible = false;
 const readerContent = new Map();
 
@@ -106,6 +108,14 @@ function readHardwareAccelerationSetting() {
         }
     } catch (err) {
         console.error('Не удалось прочитать настройку аппаратного ускорения:', err);
+    }
+
+    try {
+        const logFile = path.join(app.getPath('userData'), 'logs', 'chromium.log');
+        app.commandLine.appendSwitch('enable-logging', 'file');
+        app.commandLine.appendSwitch('log-file', logFile);
+    } catch (err) {
+        console.error('Не удалось включить логи Chromium:', err);
     }
 }
 
@@ -186,7 +196,8 @@ function setupProtocolHandler() {
             'privacy': 'pages/privacy.html',
             'passwords': 'pages/passwords.html',
             'about': 'pages/about.html',
-            'reader': 'pages/reader.html'
+            'reader': 'pages/reader.html',
+            'logs': 'pages/logs.html'
         };
 
         const filePath = pageMap[pageName];
@@ -475,8 +486,10 @@ function setupIpcHandlers() {
                 try {
                     const extId = await extensionManager.loadExtension(extPath);
                     loaded.push(extId);
+                    logger.info('extensions', 'Загружено расширение из папки: ' + extPath + ' (id=' + extId + ')');
                 } catch (err) {
                     errors.push(extPath + ': ' + err.message);
+                    logger.error('extensions', 'Ошибка загрузки ' + extPath + ': ' + err.message);
                 }
             }
             mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
@@ -519,10 +532,13 @@ function setupIpcHandlers() {
 
     ipcMain.handle('extensions:installFromUrl', async (_event, url) => {
         try {
+            logger.info('extensions', 'Установка из магазина: ' + url);
             const result = await crxInstaller.installFromUrl(url);
+            logger.info('extensions', 'Установлено: ' + result.id);
             mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
             return { success: true, id: result.id };
         } catch (err) {
+            logger.error('extensions', 'Ошибка установки из магазина: ' + err.message);
             return { success: false, error: err.message };
         }
     });
@@ -634,6 +650,7 @@ function setupIpcHandlers() {
             { label: 'Сбросить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(0); } } },
             { type: 'separator' },
             { label: 'О браузере', click: () => { tabManager.createTab('browser://about'); updateChromeViewBounds(); } },
+            { label: 'Журнал браузера', click: () => { tabManager.createTab('browser://logs'); updateChromeViewBounds(); } },
             { label: 'Во весь экран', click: () => { if (mainWindow) { mainWindow.setFullScreen(!mainWindow.isFullScreen()); } } },
             { type: 'separator' },
             { label: 'Выход', click: () => { app.quit(); } }
@@ -870,6 +887,22 @@ function setupIpcHandlers() {
             recent: privacyShield.getRecentBlocked()
         };
     });
+
+    ipcMain.handle('logs:read', () => {
+        return logger.readTail(1000);
+    });
+
+    ipcMain.handle('logs:clear', () => {
+        logger.clear();
+        return { success: true };
+    });
+
+    ipcMain.handle('logs:getPath', () => {
+        return {
+            main: logger.getPath(),
+            chromium: path.join(app.getPath('userData'), 'logs', 'chromium.log')
+        };
+    });
 }
 
 function parseUserInput(input) {
@@ -1072,6 +1105,8 @@ app.whenReady().then(async () => {
     dnrBridge = new DnrBridge();
     privacyShield = new PrivacyShield(settingsStore);
     privacyShield.setup(session.defaultSession);
+    logger = new Logger();
+    logger.info('main', '=== BunPinokWeb запущен v' + app.getVersion() + ' ===');
     permissionDialogManager = new PermissionDialogManager();
     passwordStore = new PasswordStore();
     authDialogManager = new AuthDialogManager();
@@ -1097,6 +1132,7 @@ app.whenReady().then(async () => {
     tabManager = new TabManager(mainWindow, chromeViewOptions);
     tabManager.setHistoryStore(historyStore);
     tabManager.setSettingsStore(settingsStore);
+    tabManager.setLogger(logger);
     tabManager.setReaderHandler((tabId) => {
         openReader(tabId);
     });

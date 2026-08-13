@@ -143,5 +143,11 @@ contextBridge.exposeInMainWorld('browserAPI', {
 
     privacyShield: {
         getStats: () => ipcRenderer.invoke('privacyShield:getStats')
+    },
+
+    logs: {
+        read: () => ipcRenderer.invoke('logs:read'),
+        clear: () => ipcRenderer.invoke('logs:clear'),
+        getPath: () => ipcRenderer.invoke('logs:getPath')
     }
 });
