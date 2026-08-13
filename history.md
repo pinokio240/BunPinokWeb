@@ -1,5 +1,14 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.5.1 — Site Permissions (индивидуальные разрешения)
+
+### Completed
+- [x] Исключения по доменам: vk.com → уведомления «заблокировать» и т.п.
+- [x] getEffectiveSitePermission: сначала исключение сайта, потом глобальная настройка
+- [x] UI в privacy.html: добавление сайта + разрешение + значение, список с удалением
+- [x] IPC: sitePermissions:getAll/set/remove (валидация host/permission/value в main)
+- [x] Хранение: privacy.sitePermissions (JSON в settings.json)
+
 ## 2026-08-12 — v0.5.0 — ИТОГИ ДНЯ (сессия завершена)
 
 ### Полная хронология коммитов (43 коммита)

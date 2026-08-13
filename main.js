@@ -706,6 +706,58 @@ function setupIpcHandlers() {
             return { error: err.message };
         }
     });
+
+    ipcMain.handle('sitePermissions:getAll', () => {
+        return settingsStore.get('privacy.sitePermissions', {});
+    });
+
+    ipcMain.handle('sitePermissions:set', (_event, host, permission, value) => {
+        const safeHost = String(host || '').trim().toLowerCase();
+        if (!safeHost || safeHost.includes('/') || safeHost.includes(' ')) {
+            return { success: false, error: 'Некорректное имя сайта' };
+        }
+        const allowedPermissions = ['notifications', 'geolocation', 'camera', 'microphone'];
+        if (!allowedPermissions.includes(permission)) {
+            return { success: false, error: 'Некорректное разрешение' };
+        }
+        const allowedValues = ['allow', 'block', 'ask'];
+        if (!allowedValues.includes(value)) {
+            return { success: false, error: 'Некорректное значение' };
+        }
+        const sitePermissions = settingsStore.get('privacy.sitePermissions', {});
+        const copy = {};
+        for (const key of Object.keys(sitePermissions)) {
+            copy[key] = sitePermissions[key];
+        }
+        if (!copy[safeHost]) {
+            copy[safeHost] = {};
+        }
+        copy[safeHost][permission] = value;
+        settingsStore.set('privacy.sitePermissions', copy);
+        return { success: true, all: copy };
+    });
+
+    ipcMain.handle('sitePermissions:remove', (_event, host, permission) => {
+        const sitePermissions = settingsStore.get('privacy.sitePermissions', {});
+        const copy = {};
+        for (const key of Object.keys(sitePermissions)) {
+            if (key === host && !permission) {
+                continue;
+            }
+            copy[key] = {};
+            for (const permKey of Object.keys(sitePermissions[key])) {
+                if (key === host && permKey === permission) {
+                    continue;
+                }
+                copy[key][permKey] = sitePermissions[key][permKey];
+            }
+            if (Object.keys(copy[key]).length === 0) {
+                delete copy[key];
+            }
+        }
+        settingsStore.set('privacy.sitePermissions', copy);
+        return { success: true, all: copy };
+    });
 }
 
 function parseUserInput(input) {
@@ -1086,16 +1138,16 @@ function handlePermissionRequest(webContents, permission, callback) {
     }
 
     if (permission === 'notifications') {
-        resolvePermission('privacy.notifications', permission, origin, callback);
+        resolvePermission('privacy.notifications', 'notifications', permission, origin, callback);
         return;
     }
     if (permission === 'geolocation') {
-        resolvePermission('privacy.geolocation', permission, origin, callback);
+        resolvePermission('privacy.geolocation', 'geolocation', permission, origin, callback);
         return;
     }
     if (permission === 'media') {
-        const cameraMode = settingsStore.get('privacy.camera', 'allow');
-        const microphoneMode = settingsStore.get('privacy.microphone', 'allow');
+        const cameraMode = getEffectiveSitePermission(origin, 'camera', 'privacy.camera');
+        const microphoneMode = getEffectiveSitePermission(origin, 'microphone', 'privacy.microphone');
         if (cameraMode === 'ask' || microphoneMode === 'ask') {
             permissionDialogManager.request('media', origin).then((allowed) => {
                 callback(allowed);
@@ -1112,8 +1164,19 @@ function handlePermissionRequest(webContents, permission, callback) {
     callback(false);
 }
 
-function resolvePermission(settingKey, permission, origin, callback) {
-    const mode = settingsStore.get(settingKey, 'allow');
+function getEffectiveSitePermission(origin, permission, settingKey) {
+    const sitePermissions = settingsStore.get('privacy.sitePermissions', {});
+    if (typeof sitePermissions === 'object' && sitePermissions !== null) {
+        const siteEntry = sitePermissions[origin];
+        if (siteEntry && typeof siteEntry[permission] === 'string') {
+            return siteEntry[permission];
+        }
+    }
+    return settingsStore.get(settingKey, 'allow');
+}
+
+function resolvePermission(settingKey, permissionName, permission, origin, callback) {
+    const mode = getEffectiveSitePermission(origin, permissionName, settingKey);
     if (mode === 'ask') {
         permissionDialogManager.request(permission, origin).then((allowed) => {
             callback(allowed);

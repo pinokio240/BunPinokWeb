@@ -109,6 +109,32 @@ select:focus { border-color: var(--accent); }
   </div>
 
   <div class="section">
+    <div class="section-title">Особые разрешения сайтов</div>
+    <div class="row">
+      <div class="row-label">
+        <div class="title">Добавить сайт</div>
+        <div class="desc">Индивидуальное разрешение для конкретного домена (например vk.com)</div>
+      </div>
+    </div>
+    <div class="row" style="flex-wrap:wrap;gap:8px;">
+      <input type="text" id="site-host" placeholder="vk.com" style="width:160px">
+      <select id="site-permission">
+        <option value="notifications">Уведомления</option>
+        <option value="geolocation">Геолокация</option>
+        <option value="camera">Камера</option>
+        <option value="microphone">Микрофон</option>
+      </select>
+      <select id="site-value">
+        <option value="allow">Разрешить</option>
+        <option value="block">Заблокировать</option>
+        <option value="ask">Спрашивать</option>
+      </select>
+      <button class="btn" id="site-add-btn">Добавить</button>
+    </div>
+    <div id="site-permissions-list" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="section">
     <div class="section-title">Заголовки запросов</div>
     <div class="row">
       <div class="row-label">
@@ -179,7 +205,84 @@ async function loadSettings() {
   setSelect('privacy-microphone', all['privacy.microphone'] || 'allow');
   setSelect('privacy-popups', all['privacy.popups'] || 'block');
   updateDntToggle(all['privacy.dnt'] === true);
+  renderSitePermissions();
 }
+
+const PERMISSION_LABELS = {
+  'notifications': 'Уведомления',
+  'geolocation': 'Геолокация',
+  'camera': 'Камера',
+  'microphone': 'Микрофон'
+};
+
+const VALUE_LABELS = {
+  'allow': 'Разрешить',
+  'block': 'Заблокировать',
+  'ask': 'Спрашивать'
+};
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  let safeStr = '';
+  if (str) {
+    safeStr = str;
+  }
+  div.textContent = safeStr;
+  return div.innerHTML;
+}
+
+async function renderSitePermissions() {
+  const list = document.getElementById('site-permissions-list');
+  const permissions = await window.browserAPI.sitePermissions.getAll();
+  const hosts = Object.keys(permissions);
+  if (hosts.length === 0) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--subtext);padding:4px 0;">Нет особых разрешений</div>';
+    return;
+  }
+  let html = '';
+  for (const host of hosts) {
+    const entry = permissions[host];
+    for (const permission of Object.keys(entry)) {
+      const label = PERMISSION_LABELS[permission] || permission;
+      const valueLabel = VALUE_LABELS[entry[permission]] || entry[permission];
+      html += `
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
+          <span style="flex:1;"><b>${escapeHtml(host)}</b> — ${escapeHtml(label)}: ${escapeHtml(valueLabel)}</span>
+          <button class="btn danger" data-host="${escapeHtml(host)}" data-permission="${escapeHtml(permission)}">Удалить</button>
+        </div>
+      `;
+    }
+  }
+  list.innerHTML = html;
+  list.querySelectorAll('[data-host]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      await window.browserAPI.sitePermissions.remove(btn.dataset.host, btn.dataset.permission);
+      renderSitePermissions();
+    });
+  });
+}
+
+document.getElementById('site-add-btn').addEventListener('click', async () => {
+  const host = document.getElementById('site-host').value.trim().toLowerCase();
+  if (!host) {
+    showToast('Введите имя сайта');
+    return;
+  }
+  const permission = document.getElementById('site-permission').value;
+  const value = document.getElementById('site-value').value;
+  const result = await window.browserAPI.sitePermissions.set(host, permission, value);
+  if (result.success) {
+    document.getElementById('site-host').value = '';
+    renderSitePermissions();
+    showToast('Сохранено');
+  } else {
+    let errorMsg = 'Ошибка';
+    if (result.error) {
+      errorMsg = result.error;
+    }
+    showToast(errorMsg);
+  }
+});
 
 function updateDntToggle(on) {
   const toggle = document.getElementById('dnt-toggle');
