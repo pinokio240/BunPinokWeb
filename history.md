@@ -1,5 +1,29 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.9.0 — 🎉 VK Music Player РАБОТАЕТ ПОЛНОСТЬЮ
+
+### Итог: расширение запустилось корректно
+
+Полная цепочка фиксов, которые к этому привели (в порядке обнаружения):
+
+1. **`chrome.storage` → HTTP-мост** (единый writer в main) — устранены LOCK-конфликты LevelDB на Windows
+2. **`app.requestSingleInstanceLock()`** — защита от двух экземпляров
+3. **webRequest: единый диспетчер** — Electron держит только последний listener; DNR-правила были мертвы с v0.5.5 (их перезаписывали PrivacyShield/DNT)
+4. **Шим переживает `Object.freeze(chrome)`** — в попапе шим умирал на `chrome.action = {}` → try/catch + guard'ы + патч библиотеки (убрали freeze)
+5. **MV3 SW wrapper**: `importScripts()` запрещён в module-воркерах → ES-импорты
+6. **MV2-first конверсия**: нативный MV3-SW мессенджинг сломан в Electron (`NOTREACHED, view type 0`) → фон-страница MV2 как основной путь
+7. **DNR/offscreen шим: Promise+callback dual API** — расширение ждало Promise от `getDynamicRules()`, получало undefined
+8. **Initiator-детекция**: у фоновых запросов расширения `webContents` пуст, а `referrer` = строка `"null"` → теперь считается расширением → встроенные VK DNR-правила (Origin-спуф `m.vk.ru` для web_token, `vk.ru` для api.vk.ru) реально применяются
+9. **Локальное время в логе** (было UTC, −3ч от МСК)
+
+### Что работает у пользователя
+- Авторизация через web_token (Origin-спуф) ✅
+- Загрузка секций аудио (api.vk.ru/al_audio.php) ✅
+- Storage-настройки плеера (мост) ✅
+- Команды/хоткеи расширения ✅
+- DevTools докнутый внизу окна (F12), инспекция элемента ✅
+- ПКМ по иконке в тулбаре → попап/настройки/управление ✅
+
 ## 2026-08-13 — v0.8.6 — DevTools в доке внутри окна + alwaysOnTop попапов
 
 ### Проблема

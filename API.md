@@ -140,15 +140,31 @@
 
 | Метод | Описание |
 |---|---|
-| `getAll()` | Массив `{id, name, version, description, enabled, icon, hasPopup}` |
+| `getAll()` | Массив `{id, name, version, description, enabled, icon, hasPopup, optionsPage}` |
 | `loadUnpacked()` | Диалог выбора папок (мультивыбор) → `{loadedCount, errors}` |
-| `installFromUrl(url)` | Ссылка Chrome Web Store / Edge / Opera или ID |
+| `installFromUrl(url)` | Ссылка Chrome Web Store / Edge / Opera / AMO или ID |
 | `installFromFile()` | Диалог .crx / .nex / .xpi (XPI конвертируется) |
 | `disable(extId)` | Выключить (остаётся в реестре) |
 | `enable(extId)` | Включить заново |
 | `remove(extId)` | Удалить (+ папку с диска) |
-| `openPopup(extId, x, y)` | Открыть попап у координат |
+| `openPopup(extId, x, y)` | Открыть попап у координат (alwaysOnTop) |
+| `openOptions(extId)` | Открыть страницу настроек расширения (`options_ui.page`/`options_page` из манифеста) во вкладке |
+| `showContextMenu(extId, x, y)` | ПКМ по иконке в тулбаре: попап / настройки / управление |
 | `onUpdated(cb)` | Событие `extensions:updated` → `cb(extensions)` |
+
+### Мост расширений (HTTP, 127.0.0.1:33123)
+
+Шим `electron-compat.js` (инжектится в фон/попап/offscreen/content-scripts каждого расширения) заменяет отсутствующие в Electron `chrome.*` API на fetch-вызовы к локальному HTTP-серверу в main:
+
+| Эндпоинт | API расширения |
+|---|---|
+| `/storage-get` `/storage-set` `/storage-remove` `/storage-clear` | `chrome.storage.local/sync/session` (единый writer в main, JSON в `userData/extension-storage/`) |
+| `/rules` | `chrome.declarativeNetRequest.updateDynamicRules/updateSessionRules` |
+| `/webrq-register` `/webrq-pending` `/webrq-answer` | `chrome.webRequest.*` (blocking-мост) |
+| `/offscreen` `/offscreen-close` `/offscreen-has` | `chrome.offscreen.*` (скрытое окно-эмуляция) |
+| `/identity-token` `/identity-launch` `/identity-result` | `chrome.identity.getAuthToken/launchWebAuthFlow` |
+| `/commands-register` `/commands-pending` | `chrome.commands` (глобальные хоткеи) |
+| `/bm-*` `/hist-*` `/browsingdata` `/topsites` `/search` `/cs-*` `/proxy-*` `/sysdisplay` | `chrome.bookmarks/history/browsingData/topSites/search/contentSettings/proxy/system.display` |
 
 ---
 
@@ -176,6 +192,15 @@
 |---|---|
 | `open(tabId)` | PiP для вкладки → `{success, error?}` |
 | `openActive()` | PiP для активной вкладки |
+
+---
+
+## browserAPI.net
+
+| Метод | Описание |
+|---|---|
+| `getFailedUrl()` | URL неудавшейся загрузки для текущей вкладки (страница `browser://offline`) |
+| `retry()` | Повторить загрузку упавшего URL из офлайн-страницы |
 
 ---
 
@@ -227,6 +252,7 @@
 | `browser://bookmarks` | Закладки (Ctrl+Shift+O) |
 | `browser://passwords` | Пароли |
 | `browser://about` | О браузере |
+| `browser://offline` | «Нет соединения» (после исчерпания сетевых ретраев, кнопка «Повторить») |
 
 ## Горячие клавиши
 
@@ -239,6 +265,8 @@
 | Ctrl+H / Ctrl+J / Ctrl+Shift+O | История / Загрузки / Закладки |
 | Ctrl+R / Alt+← / Alt+→ | Обновить / Назад / Вперёд |
 | Ctrl+N | Новое окно |
+| F12 | Инструменты разработчика (док внизу окна) |
+| F11 | Во весь экран |
 
 ## События main → renderer
 
