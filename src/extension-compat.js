@@ -144,6 +144,60 @@ const COMPAT_SHIM = `(function () {
             setExtensionActionOptions: function (options, cb) { if (cb) { cb(); } }
         };
     }
+    if (!chrome.downloads) {
+        const downloadsEvent = function () {
+            return { addListener: function () {}, removeListener: function () {}, hasListener: function () { return false; } };
+        };
+        chrome.downloads = {
+            download: function (options, cb) {
+                const doDownload = async () => {
+                    try {
+                        const resp = await fetch(options.url, { credentials: 'include' });
+                        if (!resp.ok) {
+                            if (cb) { cb(undefined); }
+                            return;
+                        }
+                        const blob = await resp.blob();
+                        const arrayBuffer = await blob.arrayBuffer();
+                        const bytes = new Uint8Array(arrayBuffer);
+                        let binary = '';
+                        const chunk = 0x8000;
+                        for (let i = 0; i < bytes.length; i += chunk) {
+                            binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+                        }
+                        const base64 = btoa(binary);
+                        const result = await fetch('http://127.0.0.1:33123/download', {
+                            method: 'POST',
+                            headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ url: options.url, filename: options.filename, data: base64 })
+                        }).then(function (r) { return r.json(); });
+                        if (cb) { cb(result && result.id ? result.id : undefined); }
+                    } catch (err) {
+                        if (cb) { cb(undefined); }
+                    }
+                };
+                doDownload();
+            },
+            search: function (query, cb) {
+                fetch('http://127.0.0.1:33123/downloads-list')
+                    .then(function (r) { return r.json(); })
+                    .then(function (list) { if (cb) { cb(list || []); } })
+                    .catch(function () { if (cb) { cb([]); } });
+            },
+            cancel: function (id, cb) { if (cb) { cb(); } },
+            erase: function (query, cb) { if (cb) { cb(); } },
+            removeFile: function (id, cb) { if (cb) { cb(); } },
+            open: function (id, cb) { if (cb) { cb(); } },
+            pause: function (id, cb) { if (cb) { cb(); } },
+            resume: function (id, cb) { if (cb) { cb(); } },
+            onCreated: downloadsEvent(),
+            onChanged: downloadsEvent(),
+            onDeterminingFilename: downloadsEvent()
+        };
+    }
+    if (chrome.webRequest && !chrome.webRequest.handlerBehaviorChanged) {
+        chrome.webRequest.handlerBehaviorChanged = function (cb) { if (cb) { cb(); } };
+    }
     if (!chrome.scripting) {
         chrome.scripting = {
             executeScript: function (options, cb) {

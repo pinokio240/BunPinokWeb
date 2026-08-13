@@ -1,5 +1,7 @@
 import http from 'node:http';
-import { session } from 'electron';
+import path from 'node:path';
+import fs from 'node:fs';
+import { app, session } from 'electron';
 
 const BRIDGE_PORT = 33123;
 
@@ -59,29 +61,46 @@ function domainMatches(host, domainList) {
 }
 
 export class DnrBridge {
-    constructor() {
+    constructor(settingsStore) {
+        this.settingsStore = settingsStore;
         this.rules = [];
+        this.downloads = [];
+        this.nextDownloadId = 1;
+        this.logger = null;
         this._startServer();
         this._setupWebRequest();
     }
 
+    setLogger(logger) {
+        this.logger = logger;
+    }
+
     _startServer() {
         const server = http.createServer((req, res) => {
-            if (req.method !== 'POST' || req.url !== '/rules') {
-                res.writeHead(404);
-                res.end();
-                return;
-            }
             let body = '';
             req.on('data', (chunk) => {
                 body += chunk;
             });
             req.on('end', () => {
                 try {
-                    const payload = JSON.parse(body);
-                    this._applyRules(payload);
-                    res.writeHead(200, { 'content-type': 'application/json' });
-                    res.end('{}');
+                    if (req.method === 'POST' && req.url === '/rules') {
+                        const payload = JSON.parse(body);
+                        this._applyRules(payload);
+                        this._json(res, {});
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/download') {
+                        const payload = JSON.parse(body);
+                        const result = this._handleDownload(payload);
+                        this._json(res, result);
+                        return;
+                    }
+                    if (req.method === 'GET' && req.url === '/downloads-list') {
+                        this._json(res, this.downloads);
+                        return;
+                    }
+                    res.writeHead(404);
+                    res.end();
                 } catch (err) {
                     res.writeHead(400);
                     res.end();
@@ -89,9 +108,56 @@ export class DnrBridge {
             });
         });
         server.on('error', (err) => {
-            console.error('DNR мост не запустился:', err.message);
+            console.error('Мост расширений не запустился:', err.message);
         });
         server.listen(BRIDGE_PORT, '127.0.0.1');
+    }
+
+    _json(res, payload) {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(payload));
+    }
+
+    _handleDownload(payload) {
+        const filename = payload.filename || 'download.bin';
+        const base64Data = payload.data || '';
+        try {
+            let dir = '';
+            if (this.settingsStore) {
+                dir = this.settingsStore.get('downloads.path', '');
+            }
+            let savePath = filename;
+            if (dir) {
+                savePath = path.join(dir, filename);
+            } else {
+                savePath = path.join(app.getPath('downloads'), filename);
+            }
+            const buffer = Buffer.from(base64Data, 'base64');
+            fs.writeFileSync(savePath, buffer);
+            const id = this.nextDownloadId;
+            this.nextDownloadId = this.nextDownloadId + 1;
+            const record = {
+                id: id,
+                filename: filename,
+                url: payload.url || '',
+                state: 'complete',
+                bytesReceived: buffer.length,
+                totalBytes: buffer.length
+            };
+            this.downloads.unshift(record);
+            if (this.downloads.length > 200) {
+                this.downloads.pop();
+            }
+            if (this.logger) {
+                this.logger.info('downloads', 'Расширение сохранило файл: ' + savePath + ' (' + buffer.length + ' байт)');
+            }
+            return { id: id };
+        } catch (err) {
+            if (this.logger) {
+                this.logger.error('downloads', 'Не удалось сохранить файл расширения: ' + err.message);
+            }
+            return { id: 0, error: err.message };
+        }
     }
 
     _applyRules(payload) {

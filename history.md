@@ -1,5 +1,19 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.6 — chrome.downloads Bridge (VK Music Saver)
+
+### Diagnosis (анализ кода VK Music Saver)
+- MV3, Mozilla webextension-polyfill, API-таблица содержит browser.downloads.*
+- Скачивание музыки идёт через downloads.download()
+- chrome.downloads нет ни в Electron, ни в electron-chrome-extensions
+
+### Implementation
+- [x] Мост: POST /download {url, filename, data(base64)} → main сохраняет в папку загрузок
+- [x] GET /downloads-list → список сохранённого
+- [x] Shim: chrome.downloads.download = fetch (в контексте расширения, работает с blob:) → base64 → мост
+- [x] search/cancel/erase/removeFile/open/pause/resume + события — заглушки
+- [x] chrome.webRequest.handlerBehaviorChanged — заглушка
+
 ## 2026-08-13 — v0.6.5 — XPI Converter: Preserve Own Polyfill
 
 ### Из исходников Firefox

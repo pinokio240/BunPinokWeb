@@ -1102,10 +1102,11 @@ app.whenReady().then(async () => {
     historyStore = new HistoryStore();
     bookmarkStore = new BookmarkStore();
     sessionStore = new SessionStore();
-    dnrBridge = new DnrBridge();
+    dnrBridge = new DnrBridge(settingsStore);
     privacyShield = new PrivacyShield(settingsStore);
     privacyShield.setup(session.defaultSession);
     logger = new Logger();
+    dnrBridge.setLogger(logger);
     logger.info('main', '=== BunPinokWeb запущен v' + app.getVersion() + ' ===');
     permissionDialogManager = new PermissionDialogManager();
     passwordStore = new PasswordStore();
