@@ -1,5 +1,35 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.8.2 — VK Music Player: shim-фиксы + встроенные VK DNR-правила
+
+### Симптомы (свежий лог)
+- `Произошла ошибка VK Api при загрузке секции Code №5 - User authorization failed: client_secret is incorrect`
+- `TypeError: chrome.runtime.getContexts is not a function` (попап)
+- LOCK-ошибки хранилища ушли (мост работает)
+
+### Корень №1: шим умирал в попапе
+- Библиотека electron-chrome-extensions в попапе делает `Object.freeze(chrome)` (в preload)
+- Наш шим: `if (!chrome.action) { chrome.action = {}; }` → на замороженном chrome присваивание **молча не срабатывает** → следующая строка `chrome.action.setBadgeText = ...` → TypeError → весь шим дальше мёртв (storage, offscreen, i18n, getContexts, scripting)
+- Воспроизведено тестом с мок-окружением попапа (Node)
+
+### Fix №1
+- [x] Весь COMPAT_SHIM обёрнут в try/catch с логом `[bunpinok-shim]`
+- [x] Блоки `chrome.action` и `chrome.i18n` — guard после присваивания
+- [x] Блок `chrome.offscreen` — разнесён на присваивание + guard (был тот же паттерн с REASON)
+- [x] Патч библиотеки (postinstall): убран `Object.freeze(chrome)` — попап теперь мутабельный, как в настоящем Chrome
+
+### Корень №2: DNR-правила расширения могли не дойти
+- VK Music Player регистрирует правила только в `runtime.onInstalled` (`updateDynamicRules`) — если событие не сработало, Origin не спуфится → VK отклоняет web_token → error 5
+
+### Fix №2
+- [x] `dnr-bridge.js`: встроенные правила 9001-9003 (Origin: https://vk.ru/) для `login.vk.ru/*act=web_token*`, `api.vk.ru/*`, `vk.ru/al_audio.php*` — срабатывают для любых extension-инициаторов (`initiatorDomains: ['chrome-extension']`)
+- [x] Лог применения правил (первые 50 URL) — видно в журнале браузера
+
+### Проверка пользователем
+1. Перезапустить браузер
+2. Открыть аудио VK — ошибка №5 должна уйти
+3. В логе должны появиться строки `[dnr] Правило VK применено к ...`
+
 ## 2026-08-13 — v0.8.1 — КРИТИЧЕСКИЙ ФИКС: chrome.storage через мост (LOCK-конфликты)
 
 ### Диагноз (из свежего лога пользователя)
