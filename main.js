@@ -217,7 +217,12 @@ function setupProtocolHandler() {
                     contentType = mimeTypes[ext];
                 }
                 const body = fs.readFileSync(fullPath);
-                return new Response(body, { headers: { 'content-type': contentType } });
+                return new Response(body, {
+                    headers: {
+                        'content-type': contentType,
+                        'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data: blob:; font-src * data:; connect-src *"
+                    }
+                });
             } catch (err) {
                 console.error(`Protocol handler error for ${fullPath}:`, err);
                 return new Response('<h1>500 Internal Error</h1>', {
