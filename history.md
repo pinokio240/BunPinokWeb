@@ -1,5 +1,25 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.8.4 — MV3 SW wrapper fix (фон расширения падал после переустановки)
+
+### Симптом
+- После переустановки VK Music Player из магазина ошибка №5 не ушла
+- В chromium.log: `Module scripts don't support importScripts()` + `Service worker registration failed. Status code: 15`
+- Фон расширения мёртв → web_token не запрашивается → error 5
+
+### Корень
+- После свежей установки расширение стало нативным MV3 (service worker)
+- Наш wrapper `bunpinok-sw-wrapper.js` использовал `importScripts()` — запрещено в module-воркерах (MV3 SW — это ES-модуль) → SW падал при старте
+- Баг жил с v0.7.0 (native MV3), но маскировался: старые установки оставались MV2
+
+### Fix
+- [x] wrapper теперь `import './electron-compat.js'; import './<worker>';` (валидные ES-импорты в module SW)
+- [x] Патч библиотеки: `exposeInMainWorld("electron", …)` обёрнут в try/catch с fallback на `window.electron` (ошибка «Cannot bind an API on top of an existing property» в попапе)
+- [x] Патч-скрипт идемпотентен (якорный regex по началу строки)
+
+### Также в логе
+- `vk.ru/login.php?act=slogin&role=fast_return` → CORS block: **сессия VK в браузере протухла** — нужно перелогиниться на vk.ru, иначе web_token не получить (нет remixsid)
+
 ## 2026-08-13 — v0.8.3 — ГЛАВНЫЙ БАГ НАЙДЕН: Electron держит только последний webRequest-listener
 
 ### Симптом
