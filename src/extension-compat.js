@@ -33,7 +33,9 @@ const UNKNOWN_PERMISSIONS = [
     'history',
     'processes',
     'privacy',
-    'webNavigation'
+    'webNavigation',
+    'userScripts',
+    'scripting'
 ];
 
 const COMPAT_SHIM = `(function () {
@@ -1162,6 +1164,18 @@ export function prepareExtensionForElectron(extPath, mode) {
     if (manifest.manifest_version === 2 && manifest.action && !manifest.browser_action) {
         manifest.browser_action = manifest.action;
         delete manifest.action;
+        changed = true;
+    }
+
+    if (manifest.manifest_version === 2 && manifest.content_security_policy && typeof manifest.content_security_policy === 'object') {
+        const cspObj = manifest.content_security_policy;
+        if (typeof cspObj.extension_pages === 'string') {
+            manifest.content_security_policy = cspObj.extension_pages;
+        } else if (typeof cspObj.sandbox === 'string') {
+            manifest.content_security_policy = cspObj.sandbox;
+        } else {
+            delete manifest.content_security_policy;
+        }
         changed = true;
     }
 
