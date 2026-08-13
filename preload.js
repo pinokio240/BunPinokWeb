@@ -103,7 +103,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
         enable: (extId) => ipcRenderer.invoke('extensions:enable', extId),
         remove: (extId) => ipcRenderer.invoke('extensions:remove', extId),
         openPopup: (extId, x, y) => ipcRenderer.invoke('extensions:openPopup', extId, x, y),
-        installFromUrl: (url) => ipcRenderer.invoke('extensions:installFromUrl', url),
+        installFromUrl: (url, key) => ipcRenderer.invoke('extensions:installFromUrl', url, key),
         installFromFile: () => ipcRenderer.invoke('extensions:installFromFile'),
         onUpdated: (callback) => {
             ipcRenderer.on('extensions:updated', (_event, extensions) => callback(extensions));

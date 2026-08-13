@@ -113,17 +113,22 @@ function extractCrxPublicKey(buffer) {
     }
 }
 
-function injectKeyIntoManifest(targetDir, publicKey) {
-    if (!publicKey) {
-        return;
-    }
+function injectKeyIntoManifest(targetDir, publicKey, overrideKey) {
     try {
         const manifestPath = path.join(targetDir, 'manifest.json');
         if (!fs.existsSync(manifestPath)) {
             return;
         }
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+        if (overrideKey) {
+            manifest.key = overrideKey;
+            fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+            return;
+        }
         if (manifest.key) {
+            return;
+        }
+        if (!publicKey) {
             return;
         }
         manifest.key = publicKey.toString('base64');
@@ -243,7 +248,7 @@ export class CrxInstaller {
         return Buffer.from(arrayBuffer);
     }
 
-    async installFromUrl(url) {
+    async installFromUrl(url, overrideKey) {
         const source = this.detectSource(url);
         if (source.type === 'unknown') {
             throw new Error('Не удалось распознать источник. Вставьте ссылку из Chrome Web Store, Edge Add-ons, Opera Addons, addons.mozilla.org (Firefox) или ID расширения (32 символа).');
@@ -278,7 +283,7 @@ export class CrxInstaller {
             throw new Error('В архиве нет manifest.json');
         }
 
-        injectKeyIntoManifest(targetDir, publicKey);
+        injectKeyIntoManifest(targetDir, publicKey, overrideKey);
 
         const extId = await this.extensionManager.loadExtension(targetDir);
         return { id: extId, path: targetDir };

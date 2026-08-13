@@ -530,10 +530,10 @@ function setupIpcHandlers() {
         return { success: true };
     });
 
-    ipcMain.handle('extensions:installFromUrl', async (_event, url) => {
+    ipcMain.handle('extensions:installFromUrl', async (_event, url, overrideKey) => {
         try {
             logger.info('extensions', 'Установка из магазина: ' + url);
-            const result = await crxInstaller.installFromUrl(url);
+            const result = await crxInstaller.installFromUrl(url, overrideKey || '');
             logger.info('extensions', 'Установлено: ' + result.id);
             mainWindow.webContents.send('extensions:updated', extensionManager.getAllExtensions());
             return { success: true, id: result.id };

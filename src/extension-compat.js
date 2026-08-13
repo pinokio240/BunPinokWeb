@@ -105,6 +105,12 @@ const COMPAT_SHIM = `(function () {
             onChanged: { addListener: function () {}, removeListener: function () {} }
         };
     }
+    if (chrome.storage && !chrome.storage.sync && chrome.storage.local) {
+        chrome.storage.sync = chrome.storage.local;
+        if (!chrome.storage.sync.onChanged) {
+            chrome.storage.sync.onChanged = chrome.storage.onChanged || { addListener: function () {}, removeListener: function () {} };
+        }
+    }
     if (!chrome.alarms) {
         chrome.alarms = {
             create: function (name, info) {},
@@ -144,8 +150,7 @@ const COMPAT_SHIM = `(function () {
             setExtensionActionOptions: function (options, cb) { if (cb) { cb(); } }
         };
     }
-    if (!chrome.downloads) {
-        const downloadsEvent = function () {
+    if (!chrome.downloads) {        const downloadsEvent = function () {
             return { addListener: function () {}, removeListener: function () {}, hasListener: function () { return false; } };
         };
         chrome.downloads = {

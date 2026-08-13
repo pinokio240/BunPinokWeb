@@ -1,5 +1,16 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.8 — Log Export + storage.sync + Store Key Extraction
+
+### Log page
+- [x] Кнопка «Экспортировать» — скачивает журнал в .txt файл
+
+### VK Next (из логов)
+- [x] chrome.storage.sync → алиас на chrome.storage.local (фикс "sync is not available")
+- [x] Баннер установки извлекает настоящий "key" из HTML страницы магазина и передаёт в установку
+- [x] injectKeyIntoManifest: поддержка overrideKey (приоритет над CRX-ключом)
+- [x] IPC installFromUrl(url, overrideKey)
+
 ## 2026-08-13 — v0.6.7 — MV3 Module Worker Fix (VK Music Player)
 
 ### Diagnosis

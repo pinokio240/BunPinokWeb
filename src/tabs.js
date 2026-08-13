@@ -271,7 +271,17 @@ export class TabManager {
             btn.addEventListener('click', async () => {
                 btn.textContent = 'Установка...';
                 btn.disabled = true;
-                const result = await window.browserAPI.extensions.installFromUrl(location.href);
+                let overrideKey = '';
+                try {
+                    const html = document.documentElement.innerHTML;
+                    const keyMatch = html.match(/"key"\s*:\s*"([A-Za-z0-9+\/=]+)"/);
+                    if (keyMatch && keyMatch[1]) {
+                        overrideKey = keyMatch[1];
+                    }
+                } catch (keyErr) {
+                    overrideKey = '';
+                }
+                const result = await window.browserAPI.extensions.installFromUrl(location.href, overrideKey);
                 if (result.success) {
                     btn.textContent = 'Установлено ✓';
                     banner.style.background = '#188038';
