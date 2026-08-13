@@ -1,5 +1,20 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.5.6 — Network Fixes (QUIC off)
+
+### Problems
+- ERR_QUIC_PROTOCOL_ERROR (chromewebstore.google.com)
+- ERR_NETWORK_ACCESS_DENIED (vk.ru/feed)
+- Медленная загрузка — время простоя на повторных попытках QUIC/HTTP2
+
+### Diagnosis
+DPI/фильтрация в РФ-сетях ломает QUIC (HTTP/3) и HTTP/2 — Chromium не всегда откатывается на TCP.
+
+### Fixes
+- [x] Настройка network.quic (по умолчанию ВЫКЛ) → --disable-quic до app ready
+- [x] Тумблер «QUIC (HTTP/3)» в Системе
+- [x] HTTP/2 тумблер уже был — рекомендуется тоже выключить при проблемах
+
 ## 2026-08-13 — v0.5.5 — DNR Bridge (declarativeNetRequest)
 
 ### Research (код VK Next)

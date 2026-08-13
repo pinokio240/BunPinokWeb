@@ -95,6 +95,9 @@ function readHardwareAccelerationSetting() {
             if (data['network.http2'] === false) {
                 app.commandLine.appendSwitch('disable-http2');
             }
+            if (data['network.quic'] === false) {
+                app.commandLine.appendSwitch('disable-quic');
+            }
         }
     } catch (err) {
         console.error('Не удалось прочитать настройку аппаратного ускорения:', err);

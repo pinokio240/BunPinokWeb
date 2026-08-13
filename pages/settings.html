@@ -448,6 +448,16 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
             <option value="false">Выкл.</option>
           </select>
         </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">QUIC (HTTP/3)</div>
+            <div class="desc">По умолчанию выключен — в РФ-сетях часто ломается фильтрацией. Включайте только при стабильной сети (нужен перезапуск)</div>
+          </div>
+          <select id="setting-quic">
+            <option value="true">Вкл.</option>
+            <option value="false">Выкл.</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -602,6 +612,9 @@ async function loadSettings() {
   let http2 = all['network.http2'] !== false;
   setSelect('setting-http2', String(http2));
 
+  let quic = all['network.quic'] !== false;
+  setSelect('setting-quic', String(quic));
+
   document.getElementById('autofill-name').value = all['autofill.name'] || '';
   document.getElementById('autofill-email').value = all['autofill.email'] || '';
   document.getElementById('autofill-phone').value = all['autofill.phone'] || '';
@@ -673,6 +686,7 @@ bindChange('setting-hwaccel', 'system.hardwareAcceleration', 'bool');
 bindChange('setting-proxymode', 'system.proxyMode');
 bindChange('setting-proxyserver', 'system.proxyServer', 'trim');
 bindChange('setting-http2', 'network.http2', 'bool');
+bindChange('setting-quic', 'network.quic', 'bool');
 bindChange('privacy-notifications', 'privacy.notifications');
 bindChange('privacy-geolocation', 'privacy.geolocation');
 bindChange('privacy-camera', 'privacy.camera');
