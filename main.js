@@ -552,6 +552,45 @@ function setupIpcHandlers() {
         return { success: true, url: url };
     });
 
+    ipcMain.handle('extensions:showContextMenu', (_event, extId, x, y) => {
+        const optionsPage = extensionManager.getOptionsPage(extId);
+        const popupPath = extensionManager.getPopupPath(extId);
+        const template = [];
+        if (popupPath) {
+            template.push({
+                label: 'Открыть попап',
+                click: () => {
+                    openExtensionPopup(extId, popupPath, Math.round(x), Math.round(y));
+                }
+            });
+        }
+        if (optionsPage) {
+            template.push({
+                label: 'Настройки',
+                click: () => {
+                    const url = 'chrome-extension://' + extId + '/' + optionsPage;
+                    tabManager.createTab(url);
+                    updateChromeViewBounds();
+                    logger.info('extensions', 'Открыты настройки расширения (ПКМ): ' + url);
+                }
+            });
+        }
+        template.push({
+            label: 'Управление расширениями',
+            click: () => {
+                tabManager.createTab('browser://extensions');
+                updateChromeViewBounds();
+            }
+        });
+        const menu = Menu.buildFromTemplate(template);
+        menu.popup({
+            window: mainWindow,
+            x: Math.round(x),
+            y: Math.round(y)
+        });
+        return { success: true };
+    });
+
     ipcMain.handle('extensions:installFromUrl', async (_event, url, overrideKey) => {
         try {
             logger.info('extensions', 'Установка из магазина: ' + url);

@@ -161,17 +161,17 @@ export class ExtensionManager {
         if (!fs.existsSync(manifestPath)) {
             throw new Error('Нет manifest.json в ' + extPath);
         }
-        prepareExtensionForElectron(extPath, 'native');
+        prepareExtensionForElectron(extPath, 'mv2');
         let ext = null;
         try {
             ext = await session.defaultSession.extensions.loadExtension(extPath, {
                 allowFileAccess: true
             });
-        } catch (nativeErr) {
+        } catch (mv2Err) {
             if (this.logger) {
-                this.logger.warn('extensions', 'Нативный MV3 не загрузился (' + nativeErr.message + '), пробуем MV2...');
+                this.logger.warn('extensions', 'MV2 не загрузился (' + mv2Err.message + '), пробуем нативный MV3...');
             }
-            prepareExtensionForElectron(extPath, 'mv2');
+            prepareExtensionForElectron(extPath, 'native');
             ext = await session.defaultSession.extensions.loadExtension(extPath, {
                 allowFileAccess: true
             });
@@ -258,17 +258,17 @@ export class ExtensionManager {
         if (!fs.existsSync(manifestPath)) {
             throw new Error('Нет manifest.json в выбранной папке');
         }
-        prepareExtensionForElectron(extPath, 'native');
+        prepareExtensionForElectron(extPath, 'mv2');
         let ext = null;
         try {
             ext = await session.defaultSession.extensions.loadExtension(extPath, {
                 allowFileAccess: true
             });
-        } catch (nativeErr) {
+        } catch (mv2Err) {
             if (this.logger) {
-                this.logger.warn('extensions', 'Нативный MV3 не загрузился (' + nativeErr.message + '), пробуем MV2...');
+                this.logger.warn('extensions', 'MV2 не загрузился (' + mv2Err.message + '), пробуем нативный MV3...');
             }
-            prepareExtensionForElectron(extPath, 'mv2');
+            prepareExtensionForElectron(extPath, 'native');
             ext = await session.defaultSession.extensions.loadExtension(extPath, {
                 allowFileAccess: true
             });

@@ -1009,7 +1009,22 @@ export function prepareExtensionForElectron(extPath, mode) {
 
     // ── MV2 (родной MV2 или принудительный fallback) ──
     if (manifest.manifest_version === 3 && manifest.background && typeof manifest.background.service_worker === 'string') {
-        const worker = manifest.background.service_worker;
+        let worker = manifest.background.service_worker;
+        if (worker === 'bunpinok-sw-wrapper.js') {
+            const wrapperPath = path.join(extPath, worker);
+            try {
+                const wrapperContent = fs.readFileSync(wrapperPath, 'utf-8');
+                const imports = wrapperContent.match(/import '\.\/([^']+)';/g);
+                if (imports && imports.length >= 2) {
+                    const realWorker = imports[1].replace(/import '\.\//, '').replace(/';$/, '');
+                    if (fs.existsSync(path.join(extPath, realWorker))) {
+                        worker = realWorker;
+                    }
+                }
+            } catch (err) {
+                // wrapper не прочитан — оставляем как есть
+            }
+        }
         delete manifest.background.service_worker;
         manifest.background.scripts = [worker];
         manifest.background.persistent = true;

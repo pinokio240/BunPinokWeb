@@ -304,6 +304,14 @@ async function renderExtensionsBar() {
         Math.round(rect.bottom + 4)
       );
     });
+    iconEl.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      browserAPI.extensions.showContextMenu(
+        iconEl.dataset.extId,
+        Math.round(e.clientX),
+        Math.round(e.clientY)
+      );
+    });
   });
 }
 
