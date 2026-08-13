@@ -1,5 +1,17 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.7 — MV3 Module Worker Fix (VK Music Player)
+
+### Diagnosis
+- VK Music Player: background = ES-модуль (service-worker-loader.js: `import './js/CNPcqZOf.js'`)
+- После даунгрейда MV3→MV2 лоадер становится классическим скриптом → static import = SyntaxError → фон мёртв → попап есть, но нет доступа к VK/звука
+
+### Fix
+- [x] convertLoaderImports: статические import в лоадере → динамические await import() в async IIFE
+- [x] Применяется при даунгрейде И при повторной загрузке уже сконвертированных MV2
+- [x] Удаление "type": "module" из background (невалиден в MV2)
+- [x] Идемпотентность: маркер /* bunpinok-converted */
+
 ## 2026-08-13 — v0.6.6 — chrome.downloads Bridge (VK Music Saver)
 
 ### Diagnosis (анализ кода VK Music Saver)

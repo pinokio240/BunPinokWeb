@@ -227,6 +227,61 @@ const COMPAT_SHIM = `(function () {
     }
 })();`;
 
+function convertLoaderImports(scriptPath) {
+    try {
+        if (!fs.existsSync(scriptPath)) {
+            return false;
+        }
+        const content = fs.readFileSync(scriptPath, 'utf-8');
+        if (content.includes('/* bunpinok-converted */')) {
+            return false;
+        }
+        if (!/^\s*import[\s{'"]/m.test(content)) {
+            return false;
+        }
+        const lines = content.split('\n');
+        const out = [];
+        for (const line of lines) {
+            const importMatch = line.match(/^(\s*)import\s+(.+?)\s*;\s*$/);
+            if (importMatch) {
+                const indent = importMatch[1];
+                const spec = importMatch[2].trim();
+                if (spec.startsWith("'") || spec.startsWith('"')) {
+                    out.push(indent + 'await import(' + spec + ');');
+                } else if (spec.startsWith('* as ')) {
+                    const fromIndex = spec.indexOf(' from ');
+                    const nsName = spec.slice(5, fromIndex).trim();
+                    const fromSpec = spec.slice(fromIndex + 6).trim();
+                    out.push(indent + 'const ' + nsName + ' = await import(' + fromSpec + ');');
+                } else if (spec.startsWith('{')) {
+                    const closeIdx = spec.indexOf('}');
+                    const names = spec.slice(1, closeIdx).trim();
+                    const fromIndex = spec.indexOf(' from ');
+                    const fromSpec = spec.slice(fromIndex + 6).trim();
+                    out.push(indent + 'const { ' + names + ' } = await import(' + fromSpec + ');');
+                } else {
+                    const fromIndex = spec.indexOf(' from ');
+                    if (fromIndex > 0) {
+                        const defName = spec.slice(0, fromIndex).trim();
+                        const fromSpec = spec.slice(fromIndex + 6).trim();
+                        out.push(indent + 'const ' + defName + ' = (await import(' + fromSpec + ')).default;');
+                    } else {
+                        out.push(line);
+                    }
+                }
+            } else {
+                out.push(line);
+            }
+        }
+        const converted = '/* bunpinok-converted */\n(async () => {\n' + out.join('\n') + '\n})();\n';
+        fs.writeFileSync(scriptPath, converted, 'utf-8');
+        return true;
+    } catch (err) {
+        console.error('Не удалось сконвертировать импорты в ' + scriptPath + ':', err);
+        return false;
+    }
+}
+
 export function prepareExtensionForElectron(extPath) {
     const manifestPath = path.join(extPath, 'manifest.json');
     if (!fs.existsSync(manifestPath)) {
@@ -262,6 +317,22 @@ export function prepareExtensionForElectron(extPath) {
         manifest.background.persistent = false;
         manifest.manifest_version = 2;
         changed = true;
+
+        if (manifest.background && manifest.background.type) {
+            delete manifest.background.type;
+        }
+    }
+
+    if (manifest.manifest_version === 2 && manifest.background && Array.isArray(manifest.background.scripts)) {
+        if (manifest.background.type) {
+            delete manifest.background.type;
+            changed = true;
+        }
+        for (const scriptName of manifest.background.scripts) {
+            if (convertLoaderImports(path.join(extPath, scriptName))) {
+                changed = true;
+            }
+        }
     }
 
     if (manifest.manifest_version === 2) {
