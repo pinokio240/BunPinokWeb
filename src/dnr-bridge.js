@@ -1436,13 +1436,14 @@ export class DnrBridge {
                             }
                             for (let i = 0; i < values.length; i++) {
                                 const value = values[i];
-                                if (value.includes('127.0.0.1:33123')) {
+                                const cspExtra = 'http://127.0.0.1:33123 https://api.genius.com https://api.vknext.net';
+                                if (value.includes(cspExtra)) {
                                     continue;
                                 }
                                 if (value.includes('connect-src')) {
-                                    values[i] = value.replace(/connect-src/, 'connect-src http://127.0.0.1:33123');
+                                    values[i] = value.replace(/connect-src/, 'connect-src ' + cspExtra);
                                 } else {
-                                    values[i] = value + '; connect-src http://127.0.0.1:33123';
+                                    values[i] = value + '; connect-src ' + cspExtra;
                                 }
                             }
                             responseHeaders[key] = values;

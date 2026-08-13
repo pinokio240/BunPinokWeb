@@ -24,24 +24,40 @@ const FS_POLYFILL = `(() => {
         }
         return btoa(binary);
     };
-    class FsWritable {
+    class FsWritable extends WritableStream {
         constructor(dir, name) {
+            let self = null;
+            super({
+                write(chunk) {
+                    self.chunks.push(chunk);
+                    return Promise.resolve();
+                },
+                close() {
+                    return self._finalize();
+                },
+                abort() {
+                    self.closed = true;
+                    return Promise.resolve();
+                }
+            });
+            self = this;
             this.dir = dir;
             this.name = name;
             this.chunks = [];
             this.closed = false;
-            const self = this;
-            this.ws = new WritableStream({
-                write(chunk) { self.chunks.push(chunk); return Promise.resolve(); },
-                close() { return self._finalize(); },
-                abort() { self.closed = true; return Promise.resolve(); }
-            });
+            this.finalized = false;
         }
         async _finalize() {
+            if (this.finalized) {
+                return;
+            }
+            this.finalized = true;
             const all = [];
             for (const chunk of this.chunks) {
                 const bytes = await toBytes(chunk);
-                for (const b of bytes) all.push(b);
+                for (const b of bytes) {
+                    all.push(b);
+                }
             }
             const data = bytesToBase64(Uint8Array.from(all));
             const result = await post('/fs-write', { dir: this.dir, name: this.name, data: data });
@@ -50,16 +66,28 @@ const FS_POLYFILL = `(() => {
             }
         }
         async write(data) {
-            if (this.closed) throw new DOMException('Writable is closed', 'InvalidStateError');
-            this.chunks.push(data);
+            if (this.closed) {
+                throw new DOMException('Writable is closed', 'InvalidStateError');
+            }
+            const writer = this.getWriter();
+            try {
+                await writer.write(data);
+            } finally {
+                writer.releaseLock();
+            }
         }
         async close() {
-            if (this.closed) return;
-            await this._finalize();
+            if (this.closed) {
+                return;
+            }
             this.closed = true;
+            const writer = this.getWriter();
+            try {
+                await writer.close();
+            } finally {
+                writer.releaseLock();
+            }
         }
-        getWriter() { return this.ws.getWriter(); }
-        abort(reason) { this.closed = true; return this.ws.abort(reason); }
     }
     class FsFileHandle {
         constructor(dir, name) { this.kind = 'file'; this.name = name; this.dir = dir; }
