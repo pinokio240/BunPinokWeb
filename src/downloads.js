@@ -28,6 +28,9 @@ export class DownloadManager {
         };
         this.nextId += 1;
         this.items.unshift(record);
+        if (this.logger) {
+            this.logger.info('downloads', 'Начало загрузки: ' + record.filename + ' (' + record.url.slice(0, 120) + ')');
+        }
 
         const askBeforeSave = this.settingsStore.get('downloads.askBeforeSave', true);
         const defaultPath = this.settingsStore.get('downloads.path', '');
@@ -57,6 +60,9 @@ export class DownloadManager {
                 record.state = 'failed';
             }
             record.receivedBytes = item.getReceivedBytes();
+            if (this.logger) {
+                this.logger.info('downloads', 'Загрузка завершена (' + state + '): ' + record.filename);
+            }
             this._notify();
         });
 
@@ -70,6 +76,9 @@ export class DownloadManager {
             const result = dialog.showSaveDialogSync(mainWindow, options);
             if (result.canceled) {
                 item.cancel();
+                if (this.logger) {
+                    this.logger.info('downloads', 'Пользователь отменил сохранение: ' + record.filename);
+                }
             } else {
                 item.setSavePath(result.filePath);
                 record.savePath = result.filePath;
@@ -83,6 +92,10 @@ export class DownloadManager {
         }
 
         this._notify();
+    }
+
+    setLogger(logger) {
+        this.logger = logger;
     }
 
     getAll() {

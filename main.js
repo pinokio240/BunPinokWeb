@@ -1100,6 +1100,7 @@ app.whenReady().then(async () => {
     notificationManager = new NotificationManager(settingsStore);
     pipManager = new PipManager();
     downloadManager = new DownloadManager(settingsStore, () => mainWindow);
+    downloadManager.setLogger(logger);
     historyStore = new HistoryStore();
     bookmarkStore = new BookmarkStore();
     sessionStore = new SessionStore();
@@ -1374,14 +1375,34 @@ app.whenReady().then(async () => {
     }
 
     app.on('web-contents-created', (_event, contents) => {
-        try {
-            const url = contents.getURL();
-            if (url.startsWith('chrome-extension://') && !contents.__bunpinokHooked) {
-                hookSingleExtensionContents(contents, url);
+        const tryHook = () => {
+            try {
+                const url = contents.getURL();
+                if (url.startsWith('chrome-extension://') && !contents.__bunpinokHooked) {
+                    hookSingleExtensionContents(contents, url);
+                } else if (url && !contents.__bunpinokHookedAny) {
+                    contents.__bunpinokHookedAny = true;
+                    if (logger) {
+                        logger.info('wc', 'Создан webContents: ' + url);
+                    }
+                }
+            } catch (err) {
+                // URL ещё не готов — попробуем позже
             }
-        } catch (err) {
-            // ещё не готов URL — подключим через poll
-        }
+        };
+        tryHook();
+        setTimeout(tryHook, 500);
+        contents.once('destroyed', () => {
+            try {
+                if (logger) {
+                    logger.info('wc', 'Уничтожен webContents: ' + contents.getURL());
+                }
+            } catch (err) {
+                if (logger) {
+                    logger.info('wc', 'Уничтожен webContents');
+                }
+            }
+        });
     });
 
     hookExtensionConsole();
