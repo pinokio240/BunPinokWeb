@@ -520,7 +520,7 @@ export class TabManager {
         if (tab.view.webContents.isDevToolsOpened()) {
             tab.view.webContents.closeDevTools();
         } else {
-            tab.view.webContents.openDevTools({ mode: 'bottom', activate: true });
+            tab.view.webContents.openDevTools({ mode: 'detach', activate: true });
         }
     }
 
@@ -532,7 +532,12 @@ export class TabManager {
         const wc = tab.view.webContents;
         const safeX = Math.round(x);
         const safeY = Math.round(y);
+        let fallbackTimer = null;
         const doInspect = () => {
+            if (fallbackTimer) {
+                clearTimeout(fallbackTimer);
+                fallbackTimer = null;
+            }
             try {
                 if (!wc.isDestroyed()) {
                     wc.inspectElement(safeX, safeY);
@@ -547,8 +552,17 @@ export class TabManager {
             }
         };
         if (!wc.isDevToolsOpened()) {
-            wc.openDevTools({ mode: 'bottom', activate: true });
-            setTimeout(doInspect, 1500);
+            wc.once('devtools-opened', () => {
+                setTimeout(doInspect, 300);
+            });
+            try {
+                wc.openDevTools({ mode: 'detach', activate: true });
+            } catch (err) {
+                if (this.logger) {
+                    this.logger.error('devtools', 'Не удалось открыть DevTools: ' + err.message);
+                }
+            }
+            fallbackTimer = setTimeout(doInspect, 2500);
         } else {
             doInspect();
         }
