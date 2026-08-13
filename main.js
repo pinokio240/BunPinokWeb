@@ -43,7 +43,6 @@ import { Logger } from './src/logger.js';
 
 let mainWindow = null;
 let chromeView = null;
-let devToolsView = null;
 let tabManager = null;
 let settingsStore = null;
 let extensionManager = null;
@@ -1244,18 +1243,7 @@ app.whenReady().then(async () => {
     chromeView.setBackgroundColor('#1a1a2e');
     mainWindow.contentView.addChildView(chromeView);
 
-    devToolsView = new WebContentsView({
-        webPreferences: {
-            contextIsolation: true,
-            nodeIntegration: false,
-            sandbox: false
-        }
-    });
-    devToolsView.setVisible(false);
-    mainWindow.contentView.addChildView(devToolsView);
-
     tabManager = new TabManager(mainWindow, chromeViewOptions);
-    tabManager.setDevToolsView(devToolsView);
     tabManager.setHistoryStore(historyStore);
     tabManager.setSettingsStore(settingsStore);
     tabManager.setLogger(logger);

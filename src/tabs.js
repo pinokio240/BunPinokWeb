@@ -30,19 +30,12 @@ export class TabManager {
         this.logger = null;
         this.pageZoomFactor = 1.0;
         this.defaultFontSize = 16;
-        this.devToolsView = null;
-        this.devToolsVisible = false;
-        this.devToolsTabId = null;
         this.lastBounds = null;
         this._setupAutoUpdate();
     }
 
     setLogger(logger) {
         this.logger = logger;
-    }
-
-    setDevToolsView(view) {
-        this.devToolsView = view;
     }
 
     setChromeExtensions(instance) {
@@ -96,9 +89,6 @@ export class TabManager {
         const view = new WebContentsView(this._buildViewOptions(url));
         view.setBackgroundColor('#ffffff');
         view.webContents.setZoomFactor(this.pageZoomFactor);
-        if (this.devToolsView) {
-            view.webContents.setDevToolsWebContents(this.devToolsView.webContents);
-        }
 
         const tab = new Tab(id, view, url);
         this.tabs.set(id, tab);
@@ -521,6 +511,22 @@ export class TabManager {
             }
         }
 
+        if (tab.devToolsView) {
+            try {
+                this.mainWindow.contentView.removeChildView(tab.devToolsView);
+            } catch (err) {
+                // view уже снята
+            }
+            try {
+                if (!tab.devToolsView.webContents.isDestroyed()) {
+                    tab.devToolsView.webContents.close();
+                }
+            } catch (err) {
+                // webContents уже уничтожен
+            }
+            tab.devToolsView = null;
+        }
+
         this.mainWindow.contentView.removeChildView(tab.view);
         tab.view.webContents.close();
         this.tabs.delete(tabId);
@@ -553,13 +559,7 @@ export class TabManager {
         tab.view.setVisible(true);
         tab.isSelected = true;
         this.activeTabId = tabId;
-        if (this.devToolsVisible && this.devToolsTabId !== tabId) {
-            const oldDevTab = this.tabs.get(this.devToolsTabId);
-            if (oldDevTab) {
-                this._closeDevToolsForTab(oldDevTab);
-                this._openDevToolsForTab(tab);
-            }
-        }
+        this._applyDockLayout();
         if (this.chromeExtensions) {
             try {
                 this.chromeExtensions.selectTab(tab.view.webContents);
@@ -589,61 +589,80 @@ export class TabManager {
             this.logger.info('devtools', 'toggleDevTools: ' + tab.url + ' (opened=' + (tab.devToolsOpen === true) + ')');
         }
         if (tab.devToolsOpen === true) {
-            this._closeDevToolsForTab(tab);
-        } else {
-            this._openDevToolsForTab(tab);
+            tab.devToolsOpen = false;
+            this._applyDockLayout();
+            return;
         }
+        this._ensureDevToolsForTab(tab);
+        tab.devToolsOpen = true;
+        this._applyDockLayout();
     }
 
-    _openDevToolsForTab(tab) {
-        const wc = tab.view.webContents;
-        tab.devToolsOpen = true;
-        this.devToolsVisible = true;
-        this.devToolsTabId = tab.id;
-        wc.once('devtools-closed', () => {
-            if (tab.devToolsOpen === true) {
-                this._closeDevToolsForTab(tab);
+    _ensureDevToolsForTab(tab) {
+        if (tab.devToolsView) {
+            return;
+        }
+        const dtView = new WebContentsView({
+            webPreferences: {
+                contextIsolation: true,
+                nodeIntegration: false,
+                sandbox: false
             }
         });
-        this._applyDevToolsBounds();
-        wc.once('devtools-opened', () => {
+        dtView.setVisible(false);
+        this.mainWindow.contentView.addChildView(dtView);
+        tab.devToolsView = dtView;
+        tab.view.webContents.setDevToolsWebContents(dtView.webContents);
+        tab.view.webContents.once('devtools-opened', () => {
             setTimeout(() => {
-                if (this.devToolsView && !this.devToolsView.webContents.isDestroyed()) {
-                    this.devToolsView.webContents.invalidate();
+                if (dtView && !dtView.webContents.isDestroyed()) {
+                    dtView.webContents.invalidate();
                 }
-                this._applyDevToolsBounds();
+                this._applyDockLayout();
             }, 600);
         });
         try {
-            if (this.devToolsView) {
-                wc.setDevToolsWebContents(this.devToolsView.webContents);
-            }
-            wc.openDevTools({ mode: 'detach', activate: true });
+            tab.view.webContents.openDevTools({ mode: 'detach' });
         } catch (err) {
-            tab.devToolsOpen = false;
             if (this.logger) {
                 this.logger.error('devtools', 'Не удалось открыть DevTools: ' + err.message);
             }
         }
     }
 
-    _closeDevToolsForTab(tab) {
-        tab.devToolsOpen = false;
-        if (this.devToolsTabId === tab.id) {
-            this.devToolsVisible = false;
-            this.devToolsTabId = null;
+    _applyDockLayout() {
+        const bounds = this.lastBounds;
+        if (!bounds) {
+            return;
         }
-        try {
-            tab.view.webContents.closeDevTools();
-        } catch (err) {
-            // DevTools уже закрыт
-        }
-        this._applyDevToolsBounds();
-    }
-
-    _applyDevToolsBounds() {
-        if (this.lastBounds) {
-            this.updateBounds(this.lastBounds);
+        const activeTab = this.getActiveTab();
+        const dockedTab = activeTab && activeTab.devToolsOpen === true && activeTab.devToolsView ? activeTab : null;
+        const splitY = Math.round(bounds.height * 0.58);
+        for (const tab of this.tabs.values()) {
+            const isDocked = dockedTab !== null && tab.id === dockedTab.id;
+            if (isDocked) {
+                tab.view.setBounds({
+                    x: bounds.x,
+                    y: bounds.y,
+                    width: bounds.width,
+                    height: Math.max(0, splitY - 3)
+                });
+            } else {
+                tab.view.setBounds(bounds);
+            }
+            if (tab.devToolsView) {
+                if (isDocked) {
+                    tab.devToolsView.setVisible(true);
+                    tab.devToolsView.setBounds({
+                        x: bounds.x,
+                        y: bounds.y + splitY,
+                        width: bounds.width,
+                        height: Math.max(0, bounds.height - splitY)
+                    });
+                } else {
+                    tab.devToolsView.setVisible(false);
+                }
+            }
         }
     }
 
@@ -675,13 +694,16 @@ export class TabManager {
             }
         };
         if (tab.devToolsOpen === true && wc.isDevToolsOpened()) {
+            this._applyDockLayout();
             doInspect();
             return;
         }
         wc.once('devtools-opened', () => {
             setTimeout(doInspect, 800);
         });
-        this._openDevToolsForTab(tab);
+        this._ensureDevToolsForTab(tab);
+        tab.devToolsOpen = true;
+        this._applyDockLayout();
         fallbackTimer = setTimeout(doInspect, 3000);
     }
 
@@ -742,33 +764,7 @@ export class TabManager {
 
     updateBounds(bounds) {
         this.lastBounds = bounds;
-        const devToolsDocked = this.devToolsVisible && this.devToolsView && this.devToolsTabId !== null;
-        const splitY = Math.round(bounds.height * 0.58);
-        for (const tab of this.tabs.values()) {
-            if (devToolsDocked && tab.id === this.devToolsTabId) {
-                tab.view.setBounds({
-                    x: bounds.x,
-                    y: bounds.y,
-                    width: bounds.width,
-                    height: Math.max(0, splitY - 3)
-                });
-            } else {
-                tab.view.setBounds(bounds);
-            }
-        }
-        if (this.devToolsView) {
-            if (devToolsDocked) {
-                this.devToolsView.setVisible(true);
-                this.devToolsView.setBounds({
-                    x: bounds.x,
-                    y: bounds.y + splitY,
-                    width: bounds.width,
-                    height: Math.max(0, bounds.height - splitY)
-                });
-            } else {
-                this.devToolsView.setVisible(false);
-            }
-        }
+        this._applyDockLayout();
     }
 
     _getUserAgent() {
@@ -802,6 +798,15 @@ export class TabManager {
             this._updateTimer = null;
         }
         for (const tab of this.tabs.values()) {
+            if (tab.devToolsView) {
+                try {
+                    if (!tab.devToolsView.webContents.isDestroyed()) {
+                        tab.devToolsView.webContents.close();
+                    }
+                } catch (err) {
+                    // webContents уже уничтожен
+                }
+            }
             tab.view.webContents.close();
         }
         this.tabs.clear();
