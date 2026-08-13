@@ -143,6 +143,11 @@ contextBridge.exposeInMainWorld('browserAPI', {
         getContent: () => ipcRenderer.invoke('reader:getContent')
     },
 
+    net: {
+        getFailedUrl: () => ipcRenderer.invoke('net:getFailedUrl'),
+        retry: () => ipcRenderer.invoke('net:retry')
+    },
+
     privacyShield: {
         getStats: () => ipcRenderer.invoke('privacyShield:getStats')
     },

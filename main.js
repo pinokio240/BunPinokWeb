@@ -64,6 +64,7 @@ let chromeExtensions = null;
 let logger = null;
 let bookmarksBarVisible = false;
 const readerContent = new Map();
+const offlineFailedUrls = new Map();
 
 function openReader(tabId) {
     const tab = tabManager.getTab(tabId);
@@ -203,7 +204,8 @@ function setupProtocolHandler() {
             'passwords': 'pages/passwords.html',
             'about': 'pages/about.html',
             'reader': 'pages/reader.html',
-            'logs': 'pages/logs.html'
+            'logs': 'pages/logs.html',
+            'offline': 'pages/offline.html'
         };
 
         const filePath = pageMap[pageName];
@@ -943,6 +945,28 @@ function setupIpcHandlers() {
         return content || null;
     });
 
+    ipcMain.handle('net:getFailedUrl', (event) => {
+        const tab = tabManager.findTabByWebContents(event.sender);
+        if (!tab) {
+            return { url: '' };
+        }
+        return { url: offlineFailedUrls.get(tab.id) || '' };
+    });
+
+    ipcMain.handle('net:retry', (event) => {
+        const tab = tabManager.findTabByWebContents(event.sender);
+        if (!tab) {
+            return { success: false };
+        }
+        const url = offlineFailedUrls.get(tab.id);
+        if (url) {
+            offlineFailedUrls.delete(tab.id);
+            tabManager.navigateTab(tab.id, url);
+            return { success: true };
+        }
+        return { success: false };
+    });
+
     ipcMain.handle('privacyShield:getStats', () => {
         return {
             stats: privacyShield.getStats(),
@@ -1237,6 +1261,10 @@ app.whenReady().then(async () => {
     tabManager.setLogger(logger);
     tabManager.setReaderHandler((tabId) => {
         openReader(tabId);
+    });
+    tabManager.setOfflineHandler((tabId, failedUrl) => {
+        offlineFailedUrls.set(tabId, failedUrl);
+        tabManager.navigateTab(tabId, 'browser://offline');
     });
     extensionManager = new ExtensionManager(tabManager);
     extensionManager.setLogger(logger);

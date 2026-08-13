@@ -10,6 +10,10 @@ class Tab {
         this.title = 'Новая вкладка';
         this.isLoading = false;
         this.isSelected = false;
+        this.navSeq = 0;
+        this.http2Retried = false;
+        this.httpsRetried = false;
+        this.netRetries = 0;
     }
 }
 
@@ -113,8 +117,10 @@ export class TabManager {
 
         view.webContents.on('did-navigate', (_event, navUrl) => {
             tab.url = navUrl;
+            tab.navSeq = tab.navSeq + 1;
             tab.http2Retried = false;
             tab.httpsRetried = false;
+            tab.netRetries = 0;
             if (this.logger) {
                 this.logger.info('nav', 'Переход: ' + navUrl);
             }
@@ -151,13 +157,20 @@ export class TabManager {
             }
         });
 
-        view.webContents.on('did-fail-load', (_event, _errorCode, errorDescription, validatedURL, isMainFrame) => {
+        view.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
             if (isMainFrame && this.logger) {
-                this.logger.error('net', 'Не удалось загрузить ' + validatedURL + ': ' + errorDescription);
+                this.logger.error('net', 'Не удалось загрузить ' + validatedURL + ': ' + errorDescription + ' (код ' + errorCode + ')');
             }
             if (!isMainFrame || !validatedURL || !errorDescription) {
                 return;
             }
+            if (validatedURL.startsWith('browser://') || validatedURL.startsWith('chrome-extension://') || validatedURL.startsWith('devtools://')) {
+                return;
+            }
+            if (errorDescription.includes('ERR_ABORTED') || errorDescription.includes('ERR_BLOCKED_BY_CLIENT')) {
+                return;
+            }
+
             if (errorDescription.includes('ERR_HTTP2_SERVER_REFUSED_STREAM')) {
                 if (!tab.http2Retried) {
                     tab.http2Retried = true;
@@ -165,6 +178,7 @@ export class TabManager {
                 }
                 return;
             }
+
             const isSslError = errorDescription.includes('ERR_SSL_') || errorDescription.includes('ERR_CERT_');
             if (isSslError && validatedURL.startsWith('https://')) {
                 if (!tab.httpsRetried) {
@@ -172,7 +186,40 @@ export class TabManager {
                     const httpUrl = validatedURL.replace('https://', 'http://');
                     view.webContents.loadURL(httpUrl, { userAgent: this._getUserAgent() });
                 }
+                return;
             }
+
+            const transientErrors = [
+                'ERR_NETWORK_CHANGED', 'ERR_INTERNET_DISCONNECTED', 'ERR_CONNECTION_RESET',
+                'ERR_CONNECTION_ABORTED', 'ERR_CONNECTION_CLOSED', 'ERR_TIMED_OUT',
+                'ERR_NETWORK_ACCESS_DENIED', 'ERR_QUIC_PROTOCOL_ERROR', 'ERR_NAME_NOT_RESOLVED',
+                'ERR_ADDRESS_UNREACHABLE', 'ERR_NETWORK_IO_SUSPENDED', 'ERR_FAILED'
+            ];
+            const isTransient = transientErrors.some((name) => {
+                return errorDescription.includes(name);
+            });
+            if (isTransient) {
+                const attempts = tab.netRetries || 0;
+                if (attempts < 3) {
+                    tab.netRetries = attempts + 1;
+                    const delays = [800, 2500, 6000];
+                    const delay = delays[attempts];
+                    const navSeqAtFail = tab.navSeq;
+                    if (this.logger) {
+                        this.logger.warn('net', 'Прерывание соединения (' + errorDescription + ') — повтор через ' + delay + 'мс (попытка ' + (attempts + 1) + '/3): ' + validatedURL);
+                    }
+                    setTimeout(() => {
+                        if (tab.navSeq === navSeqAtFail && !view.webContents.isDestroyed()) {
+                            view.webContents.loadURL(validatedURL, { userAgent: this._getUserAgent() });
+                        }
+                    }, delay);
+                } else {
+                    this._showOfflinePage(tab, validatedURL, errorDescription);
+                }
+                return;
+            }
+
+            this._showOfflinePage(tab, validatedURL, errorDescription);
         });
 
         view.webContents.on('page-title-updated', (_event, title) => {
@@ -635,8 +682,25 @@ export class TabManager {
         if (!tab) return;
 
         tab.url = url;
+        tab.navSeq = tab.navSeq + 1;
+        tab.netRetries = 0;
         tab.view.webContents.loadURL(url, { userAgent: this._getUserAgent() });
         this._notifyUpdate();
+    }
+
+    setOfflineHandler(handler) {
+        this.offlineHandler = handler;
+    }
+
+    _showOfflinePage(tab, failedUrl, errorDescription) {
+        if (this.logger) {
+            this.logger.error('net', 'Все попытки загрузки исчерпаны — офлайн-страница: ' + failedUrl + ' (' + errorDescription + ')');
+        }
+        if (this.offlineHandler) {
+            this.offlineHandler(tab.id, failedUrl, errorDescription);
+            return;
+        }
+        tab.view.webContents.loadURL('browser://offline');
     }
 
     getTab(tabId) {
