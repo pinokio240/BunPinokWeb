@@ -552,6 +552,7 @@ function setupEventListeners() {
     }
   });
   $('#bookmark-btn').addEventListener('click', async () => {
+    await refreshTabs();
     const active = tabs.find(t => t.id === activeTabId);
     if (active) {
       await browserAPI.bookmarks.toggle(active.url, active.title);

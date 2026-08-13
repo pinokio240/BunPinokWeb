@@ -1,4 +1,4 @@
-import { app, BrowserWindow, WebContentsView, ipcMain, session, protocol, dialog, Notification, Menu, nativeTheme } from 'electron';
+import { app, BrowserWindow, WebContentsView, ipcMain, session, protocol, dialog, Notification, Menu, nativeTheme, webContents } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -1321,6 +1321,50 @@ app.whenReady().then(async () => {
         }
         logger.log(level >= 2 ? 'error' : 'info', 'chrome-ui:' + sourceId, text);
     });
+
+    function hookExtensionConsole() {
+        const allContents = webContents.getAllWebContents();
+        for (const wc of allContents) {
+            if (wc.__bunpinokHooked) {
+                continue;
+            }
+            let url = '';
+            try {
+                url = wc.getURL();
+            } catch (err) {
+                continue;
+            }
+            if (!url.startsWith('chrome-extension://')) {
+                continue;
+            }
+            wc.__bunpinokHooked = true;
+            wc.on('console-message', (event, level, message, line, sourceId) => {
+                if (!logger) {
+                    return;
+                }
+                let logLevel = level;
+                let logMessage = message;
+                let logSource = sourceId;
+                if (event && typeof event === 'object' && event.message) {
+                    logLevel = event.level === 'error' || event.level === 'warning' ? 2 : 0;
+                    logMessage = event.message;
+                    logSource = event.sourceId || '';
+                }
+                const text = String(logMessage || '');
+                logger.log(typeof logLevel === 'number' && logLevel >= 2 ? 'error' : 'info', 'ext-bg:' + logSource, text);
+            });
+            wc.on('render-process-gone', (_event, details) => {
+                if (logger) {
+                    logger.error('ext-bg', 'Фон расширения упал: ' + details.reason + ' (' + url + ')');
+                }
+            });
+            if (logger) {
+                logger.info('ext-bg', 'Консоль подключена: ' + url);
+            }
+        }
+    }
+    hookExtensionConsole();
+    setInterval(hookExtensionConsole, 3000);
 
     mainWindow.webContents.on('context-menu', (_event, params) => {
         const { editFlags } = params;
