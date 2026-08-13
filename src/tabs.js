@@ -387,7 +387,7 @@ export class TabManager {
         }
 
         template.push({ type: 'separator' });
-        template.push({ label: 'Исследовать элемент', click: () => tab.view.webContents.inspectElement(params.x, params.y) });
+        template.push({ label: 'Исследовать элемент', click: () => { this.inspectElementAt(tab.id, params.x, params.y); } });
 
         const menu = Menu.buildFromTemplate(template);
         menu.popup({ window: this.mainWindow });
@@ -522,6 +522,28 @@ export class TabManager {
         } else {
             tab.view.webContents.openDevTools({ mode: 'detach' });
         }
+    }
+
+    inspectElementAt(tabId, x, y) {
+        const tab = this.tabs.get(tabId);
+        if (!tab) {
+            return;
+        }
+        const wc = tab.view.webContents;
+        if (!wc.isDevToolsOpened()) {
+            wc.openDevTools({ mode: 'detach' });
+        }
+        setTimeout(() => {
+            try {
+                if (!wc.isDestroyed()) {
+                    wc.inspectElement(Math.round(x), Math.round(y));
+                }
+            } catch (err) {
+                if (this.logger) {
+                    this.logger.error('devtools', 'Не удалось открыть инспектор элемента: ' + err.message);
+                }
+            }
+        }, 400);
     }
 
     navigateTab(tabId, url) {
