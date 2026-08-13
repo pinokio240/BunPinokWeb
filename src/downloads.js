@@ -65,17 +65,16 @@ export class DownloadManager {
             const options = {
                 title: 'Сохранить файл',
                 defaultPath: targetPath || record.filename,
-                buttonLabel: 'Save'
+                buttonLabel: 'Сохранить'
             };
-            dialog.showSaveDialog(mainWindow, options).then((result) => {
-                if (result.canceled) {
-                    item.cancel();
-                } else {
-                    item.setSavePath(result.filePath);
-                    record.savePath = result.filePath;
-                    this._notify();
-                }
-            });
+            const result = dialog.showSaveDialogSync(mainWindow, options);
+            if (result.canceled) {
+                item.cancel();
+            } else {
+                item.setSavePath(result.filePath);
+                record.savePath = result.filePath;
+                this._notify();
+            }
         } else {
             if (targetPath) {
                 item.setSavePath(targetPath);
