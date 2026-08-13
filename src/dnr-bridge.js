@@ -165,6 +165,20 @@ export class DnrBridge {
             });
             req.on('end', () => {
                 try {
+                    const origin = req.headers.origin || '';
+                    const isExtensionOrigin = origin.startsWith('chrome-extension://');
+                    const isFsRoute = req.url.indexOf('/fs-') === 0;
+                    if (isFsRoute) {
+                        if (!isExtensionOrigin && !this._fsOriginAllowed(origin)) {
+                            res.writeHead(403);
+                            res.end();
+                            return;
+                        }
+                    } else if (!isExtensionOrigin) {
+                        res.writeHead(403);
+                        res.end();
+                        return;
+                    }
                     if (this.logger && req.url !== '/webrq-pending' && req.url !== '/commands-pending') {
                         this.logger.info('bridge', req.method + ' ' + req.url + (body ? ' ' + body.slice(0, 200) : ''));
                     }
@@ -1402,6 +1416,42 @@ export class DnrBridge {
 
         session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
             const responseHeaders = details.responseHeaders || {};
+            if (details.resourceType === 'mainFrame') {
+                try {
+                    const urlObj = new URL(details.url);
+                    const hostname = urlObj.hostname;
+                    let isVk = false;
+                    for (const domain of ['vk.com', 'vk.ru', 'vknext.net']) {
+                        if (hostname === domain || hostname.endsWith('.' + domain)) {
+                            isVk = true;
+                            break;
+                        }
+                    }
+                    if (isVk) {
+                        const cspKeys = ['content-security-policy', 'Content-Security-Policy'];
+                        for (const key of cspKeys) {
+                            const values = responseHeaders[key];
+                            if (!Array.isArray(values)) {
+                                continue;
+                            }
+                            for (let i = 0; i < values.length; i++) {
+                                const value = values[i];
+                                if (value.includes('127.0.0.1:33123')) {
+                                    continue;
+                                }
+                                if (value.includes('connect-src')) {
+                                    values[i] = value.replace(/connect-src/, 'connect-src http://127.0.0.1:33123');
+                                } else {
+                                    values[i] = value + '; connect-src http://127.0.0.1:33123';
+                                }
+                            }
+                            responseHeaders[key] = values;
+                        }
+                    }
+                } catch (err) {
+                    // URL не разобран — пропускаем
+                }
+            }
             for (const rule of this.rules) {
                 if (!this._matches(details, rule.condition)) {
                     continue;
