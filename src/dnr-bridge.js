@@ -116,9 +116,19 @@ export class DnrBridge {
         this.identityLaunches = new Map();
         this.identityResults = new Map();
         this.identitySeq = 0;
+        this.beforeRequestHandlers = [];
+        this.beforeSendHeadersHandlers = [];
         this.context = null;
         this._startServer();
         this._setupWebRequest();
+    }
+
+    addOnBeforeRequestHandler(fn) {
+        this.beforeRequestHandlers.push(fn);
+    }
+
+    addOnBeforeSendHeadersHandler(fn) {
+        this.beforeSendHeadersHandlers.push(fn);
     }
 
     setContext(context) {
@@ -1039,6 +1049,24 @@ export class DnrBridge {
 
     _setupWebRequest() {
         session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+            for (const handler of this.beforeRequestHandlers) {
+                let result = null;
+                try {
+                    result = handler(details);
+                } catch (err) {
+                    result = null;
+                }
+                if (result) {
+                    if (result.cancel === true) {
+                        callback({ cancel: true });
+                        return;
+                    }
+                    if (result.redirectURL) {
+                        callback({ redirectURL: result.redirectURL });
+                        return;
+                    }
+                }
+            }
             if (this.wrListeners.length === 0) {
                 callback({});
                 return;
@@ -1052,6 +1080,30 @@ export class DnrBridge {
             const headers = {};
             for (const key of Object.keys(details.requestHeaders)) {
                 headers[key] = details.requestHeaders[key];
+            }
+            for (const handler of this.beforeSendHeadersHandlers) {
+                let result = null;
+                try {
+                    result = handler(details, headers);
+                } catch (err) {
+                    result = null;
+                }
+                if (result) {
+                    if (result.cancel === true) {
+                        callback({ cancel: true });
+                        return;
+                    }
+                    if (result.requestHeaders) {
+                        for (const headerKey of Object.keys(result.requestHeaders)) {
+                            const value = result.requestHeaders[headerKey];
+                            if (value === null || value === undefined) {
+                                delete headers[headerKey];
+                            } else {
+                                headers[headerKey] = value;
+                            }
+                        }
+                    }
+                }
             }
             for (const rule of this.rules) {
                 if (!this._matches(details, rule.condition)) {

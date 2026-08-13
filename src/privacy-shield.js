@@ -66,43 +66,44 @@ export class PrivacyShield {
         this.recentBlocked = [];
     }
 
-    setup(webSession) {
-        webSession.webRequest.onBeforeRequest((details, callback) => {
-            const httpsOnly = this.settingsStore.get('privacy.httpsOnly', true);
-            if (httpsOnly && details.url.startsWith('http://')) {
-                try {
-                    const parsed = new URL(details.url);
-                    const hostname = parsed.hostname;
-                    if (hostname === 'vk.ru' || hostname.endsWith('.vk.ru') || hostname === 'vk.com' || hostname.endsWith('.vk.com')) {
-                        this.stats.httpsRedirects = this.stats.httpsRedirects + 1;
-                        callback({ redirectURL: details.url.replace(/^http:/, 'https:') });
-                        return;
-                    }
-                } catch (err) {
-                    // некорректный URL — пропускаем
-                }
-            }
-
-            const adblock = this.settingsStore.get('privacy.adblock', true);
-            if (adblock && BLOCKABLE_TYPES.has(details.resourceType)) {
-                if (this._shouldBlockAd(details.url, details.resourceType)) {
-                    this._recordBlocked(details.url, 'ad');
-                    callback({ cancel: true });
-                    return;
-                }
-            }
-
-            const trackingLevel = this.settingsStore.get('privacy.tracking', 'balanced');
-            if (trackingLevel !== 'off') {
-                if (this._isTracker(details.url, trackingLevel)) {
-                    this._recordBlocked(details.url, 'tracker');
-                    callback({ cancel: true });
-                    return;
-                }
-            }
-
-            callback({});
+    setup(dispatcher) {
+        dispatcher.addOnBeforeRequestHandler((details) => {
+            return this.handleBeforeRequest(details);
         });
+    }
+
+    handleBeforeRequest(details) {
+        const httpsOnly = this.settingsStore.get('privacy.httpsOnly', true);
+        if (httpsOnly && details.url.startsWith('http://')) {
+            try {
+                const parsed = new URL(details.url);
+                const hostname = parsed.hostname;
+                if (hostname === 'vk.ru' || hostname.endsWith('.vk.ru') || hostname === 'vk.com' || hostname.endsWith('.vk.com')) {
+                    this.stats.httpsRedirects = this.stats.httpsRedirects + 1;
+                    return { redirectURL: details.url.replace(/^http:/, 'https:') };
+                }
+            } catch (err) {
+                // некорректный URL — пропускаем
+            }
+        }
+
+        const adblock = this.settingsStore.get('privacy.adblock', true);
+        if (adblock && BLOCKABLE_TYPES.has(details.resourceType)) {
+            if (this._shouldBlockAd(details.url, details.resourceType)) {
+                this._recordBlocked(details.url, 'ad');
+                return { cancel: true };
+            }
+        }
+
+        const trackingLevel = this.settingsStore.get('privacy.tracking', 'balanced');
+        if (trackingLevel !== 'off') {
+            if (this._isTracker(details.url, trackingLevel)) {
+                this._recordBlocked(details.url, 'tracker');
+                return { cancel: true };
+            }
+        }
+
+        return null;
     }
 
     _shouldBlockAd(url, resourceType) {

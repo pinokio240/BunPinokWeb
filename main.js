@@ -1139,7 +1139,7 @@ app.whenReady().then(async () => {
     sessionStore = new SessionStore();
     dnrBridge = new DnrBridge(settingsStore);
     privacyShield = new PrivacyShield(settingsStore);
-    privacyShield.setup(session.defaultSession);
+    privacyShield.setup(dnrBridge);
     logger = new Logger();
     dnrBridge.setLogger(logger);
     logger.info('main', '=== BunPinokWeb запущен v' + app.getVersion() + ' ===');
@@ -1458,19 +1458,12 @@ app.whenReady().then(async () => {
         handlePermissionRequest(webContents, permission, callback);
     });
 
-    session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    dnrBridge.addOnBeforeSendHeadersHandler((details, headers) => {
         const dntEnabled = settingsStore.get('privacy.dnt', false);
         if (dntEnabled) {
-            const requestHeaders = details.requestHeaders;
-            const headers = {};
-            for (const key of Object.keys(requestHeaders)) {
-                headers[key] = requestHeaders[key];
-            }
             headers['DNT'] = '1';
-            callback({ requestHeaders: headers });
-        } else {
-            callback({ requestHeaders: details.requestHeaders });
         }
+        return null;
     });
 });
 
