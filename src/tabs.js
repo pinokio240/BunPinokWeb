@@ -302,7 +302,7 @@ export class TabManager {
     _handleBeforeInput(event, input, tab) {
         const isCtrl = input.control;
         const key = input.key.toLowerCase();
-        if (!isCtrl && !(input.key === 'F11')) {
+        if (!isCtrl && !(input.key === 'F11') && !(input.key === 'F12')) {
             return;
         }
         if (key === 't' && isCtrl) {
@@ -323,7 +323,7 @@ export class TabManager {
             event.preventDefault();
             const index = parseInt(key, 10);
             this.selectTabByIndex(index);
-        } else if (isCtrl && input.shift && key === 'i') {
+        } else if (input.key === 'F12') {
             event.preventDefault();
             this.toggleDevTools(tab.id);
         } else if (input.key === 'F11') {

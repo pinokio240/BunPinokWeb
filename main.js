@@ -1276,7 +1276,7 @@ app.whenReady().then(async () => {
                 { type: 'separator' },
                 { label: 'Закрыть вкладку', accelerator: 'Ctrl+W', click: () => { const t = tabManager.getActiveTab(); if (t) { tabManager.closeTab(t.id); updateChromeViewBounds(); if (tabManager.getTabCount() === 0) { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } } } },
                 { type: 'separator' },
-                { role: 'toggleDevTools', label: 'Инструменты разработчика' },
+                { label: 'Инструменты разработчика', accelerator: 'F12', click: () => { const t = tabManager.getActiveTab(); if (t) { tabManager.toggleDevTools(t.id); } } },
                 { type: 'separator' },
                 { role: 'resetZoom', label: 'Сбросить масштаб' },
                 { role: 'zoomIn', label: 'Увеличить' },
