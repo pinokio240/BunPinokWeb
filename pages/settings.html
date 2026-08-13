@@ -441,7 +441,7 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
         <div class="row">
           <div class="row-label">
             <div class="title">HTTP/2</div>
-            <div class="desc">Быстрые соединения. Если сайты падают с ошибками соединения (SSL/HTTP2) — выключите (нужен перезапуск)</div>
+            <div class="desc">По умолчанию выключен — в проблемных сетях включайте только при стабильном соединении (нужен перезапуск)</div>
           </div>
           <select id="setting-http2">
             <option value="true">Вкл.</option>
@@ -609,10 +609,10 @@ async function loadSettings() {
   }
   document.getElementById('setting-proxyserver').value = proxyServer;
 
-  let http2 = all['network.http2'] !== false;
+  let http2 = all['network.http2'] === true;
   setSelect('setting-http2', String(http2));
 
-  let quic = all['network.quic'] !== false;
+  let quic = all['network.quic'] === true;
   setSelect('setting-quic', String(quic));
 
   document.getElementById('autofill-name').value = all['autofill.name'] || '';

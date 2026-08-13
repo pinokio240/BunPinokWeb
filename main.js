@@ -87,17 +87,18 @@ function readHardwareAccelerationSetting() {
     try {
         const userData = app.getPath('userData');
         const configPath = path.join(userData, 'settings.json');
+        let data = {};
         if (fs.existsSync(configPath)) {
-            const data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-            if (data['system.hardwareAcceleration'] === false) {
-                app.disableHardwareAcceleration();
-            }
-            if (data['network.http2'] === false) {
-                app.commandLine.appendSwitch('disable-http2');
-            }
-            if (data['network.quic'] === false) {
-                app.commandLine.appendSwitch('disable-quic');
-            }
+            data = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        }
+        if (data['system.hardwareAcceleration'] === false) {
+            app.disableHardwareAcceleration();
+        }
+        if (data['network.http2'] !== true) {
+            app.commandLine.appendSwitch('disable-http2');
+        }
+        if (data['network.quic'] !== true) {
+            app.commandLine.appendSwitch('disable-quic');
         }
     } catch (err) {
         console.error('Не удалось прочитать настройку аппаратного ускорения:', err);

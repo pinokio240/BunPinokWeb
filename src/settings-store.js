@@ -35,7 +35,7 @@ const DEFAULT_SETTINGS = {
     'autofill.email': '',
     'autofill.phone': '',
     'autofill.address': '',
-    'network.http2': true,
+    'network.http2': false,
     'network.quic': false
 };
 

@@ -1,5 +1,18 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.5.7 — Network Defaults Fix
+
+### Bug
+Предстартовое чтение настроек читало сырой settings.json: новых ключей network.* там не было → дефолты не применялись → QUIC/HTTP2 оставались включены.
+
+### Fixes
+- [x] Предстартовый ридер: network.http2 !== true → --disable-http2; network.quic !== true → --disable-quic (отсутствие ключа = выключено)
+- [x] Дефолты: network.http2 = false, network.quic = false
+- [x] UI отражает новые дефолты
+
+### Совет
+ERR_NETWORK_ACCESS_DENIED может быть и от битого системного прокси → Настройки → Система → Прокси → «Без прокси»
+
 ## 2026-08-13 — v0.5.6 — Network Fixes (QUIC off)
 
 ### Problems
