@@ -28,7 +28,6 @@ const UNKNOWN_PERMISSIONS = [
     'printing',
     'printingMetrics',
     'tabGroups',
-    'scripting',
     'favicon',
     'topSites',
     'history',
@@ -104,6 +103,52 @@ const COMPAT_SHIM = `(function () {
                 clear: function (cb) { if (cb) { cb(); } }
             },
             onChanged: { addListener: function () {}, removeListener: function () {} }
+        };
+    }
+    if (!chrome.alarms) {
+        chrome.alarms = {
+            create: function (name, info) {},
+            clear: function (name, cb) { if (cb) { cb(false); } },
+            clearAll: function (cb) { if (cb) { cb(false); } },
+            get: function (name, cb) { if (cb) { cb(null); } },
+            getAll: function (cb) { if (cb) { cb([]); } },
+            onAlarm: { addListener: function () {}, removeListener: function () {} }
+        };
+    }
+    if (!chrome.declarativeNetRequest) {
+        chrome.declarativeNetRequest = {
+            updateDynamicRules: function (options, cb) { if (cb) { cb(); } },
+            updateSessionRules: function (options, cb) { if (cb) { cb(); } },
+            getDynamicRules: function (cb) { if (cb) { cb([]); } },
+            getSessionRules: function (cb) { if (cb) { cb([]); } },
+            setExtensionActionOptions: function (options, cb) { if (cb) { cb(); } }
+        };
+    }
+    if (!chrome.scripting) {
+        chrome.scripting = {
+            executeScript: function (options, cb) {
+                if (chrome.tabs && chrome.tabs.executeScript) {
+                    const details = {};
+                    if (options.files) { details.file = options.files[0]; }
+                    if (typeof options.func === 'function') {
+                        details.code = '(' + options.func.toString() + ')(' + JSON.stringify(options.args || []) + ')';
+                    }
+                    if (options.target && options.target.tabId) {
+                        chrome.tabs.executeScript(options.target.tabId, details, cb);
+                    }
+                    return;
+                }
+                if (cb) { cb([]); }
+            },
+            insertCSS: function (options, cb) {
+                if (chrome.tabs && chrome.tabs.insertCSS) {
+                    if (options.target && options.target.tabId) {
+                        chrome.tabs.insertCSS(options.target.tabId, { file: options.files ? options.files[0] : undefined, code: options.css }, cb);
+                    }
+                    return;
+                }
+                if (cb) { cb(); }
+            }
         };
     }
 })();`;

@@ -34,7 +34,8 @@ const DEFAULT_SETTINGS = {
     'autofill.name': '',
     'autofill.email': '',
     'autofill.phone': '',
-    'autofill.address': ''
+    'autofill.address': '',
+    'network.http2': true
 };
 
 export class SettingsStore {

@@ -1,5 +1,22 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.5.4 — VK Next Fix Attempt
+
+### Diagnosis (исследование кода расширения + доков Electron)
+1. Web Token = fetch POST login.vk.com/?act=web_token (credentials:include, 3 попытки × 2 домена)
+2. Ошибки DOMException + SSL net_error -100/-101 = обрывы соединения (как ERR_HTTP2_SERVER_REFUSED_STREAM для github.com ранее) → похоже на проблему HTTP/2 в сети пользователя
+3. chrome.scripting ПОЛНОСТЬЮ поддерживается Electron (официальные доки) — наш фильтр ошибочно вырезал это разрешение
+4. chrome.alarms, chrome.declarativeNetRequest — НЕ поддерживаются → нужны стабы
+
+### Fixes
+- [x] 'scripting' убран из фильтра неизвестных разрешений
+- [x] Стабы chrome.alarms и chrome.declarativeNetRequest в compat-шиме
+- [x] Fallback chrome.scripting через chrome.tabs.executeScript (на случай отсутствия)
+- [x] Настройка «HTTP/2» в Системе: выкл. → --disable-http2 (до app ready)
+
+### Совет пользователю
+Если Web Token всё ещё падает — выключи HTTP/2 в настройках или проверь антивирус (перехват TLS ломает соединения с login.vk.com).
+
 ## 2026-08-13 — v0.5.3 — Reader Mode (Режим чтения)
 
 ### Completed

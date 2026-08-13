@@ -90,6 +90,9 @@ function readHardwareAccelerationSetting() {
             if (data['system.hardwareAcceleration'] === false) {
                 app.disableHardwareAcceleration();
             }
+            if (data['network.http2'] === false) {
+                app.commandLine.appendSwitch('disable-http2');
+            }
         }
     } catch (err) {
         console.error('Не удалось прочитать настройку аппаратного ускорения:', err);

@@ -438,6 +438,16 @@ select:focus, input[type="text"]:focus { border-color: var(--accent); }
           </div>
           <input type="text" id="setting-proxyserver" placeholder="http://host:port" style="width:280px">
         </div>
+        <div class="row">
+          <div class="row-label">
+            <div class="title">HTTP/2</div>
+            <div class="desc">Быстрые соединения. Если сайты падают с ошибками соединения (SSL/HTTP2) — выключите (нужен перезапуск)</div>
+          </div>
+          <select id="setting-http2">
+            <option value="true">Вкл.</option>
+            <option value="false">Выкл.</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -589,6 +599,9 @@ async function loadSettings() {
   }
   document.getElementById('setting-proxyserver').value = proxyServer;
 
+  let http2 = all['network.http2'] !== false;
+  setSelect('setting-http2', String(http2));
+
   document.getElementById('autofill-name').value = all['autofill.name'] || '';
   document.getElementById('autofill-email').value = all['autofill.email'] || '';
   document.getElementById('autofill-phone').value = all['autofill.phone'] || '';
@@ -659,6 +672,7 @@ bindChange('setting-sound', 'notifications.soundEnabled', 'bool');
 bindChange('setting-hwaccel', 'system.hardwareAcceleration', 'bool');
 bindChange('setting-proxymode', 'system.proxyMode');
 bindChange('setting-proxyserver', 'system.proxyServer', 'trim');
+bindChange('setting-http2', 'network.http2', 'bool');
 bindChange('privacy-notifications', 'privacy.notifications');
 bindChange('privacy-geolocation', 'privacy.geolocation');
 bindChange('privacy-camera', 'privacy.camera');
