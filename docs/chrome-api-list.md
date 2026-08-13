@@ -30,8 +30,8 @@
 | `chrome.cookies` | Cookie | ✅ | electron-chrome-extensions |
 | `chrome.webNavigation` | События навигации | ✅ | electron-chrome-extensions |
 | `chrome.privacy` | Приватность-настройки | 🟡 | стаб (get/set/clear) |
-| `chrome.contentSettings` | Настройки сайтов | ⬜ | нет |
-| `chrome.proxy` | Прокси | ⬜ | нет (есть своя система) |
+| `chrome.contentSettings` | Настройки сайтов | 🟡 | мост (cs-get/cs-set → sitePermissions) |
+| `chrome.proxy` | Прокси | ✅ | мост (proxy-get/proxy-set → system.proxyMode) |
 | `chrome.dns` | DNS | ⬜ | нет |
 
 ### Контент и скрипты
@@ -42,7 +42,7 @@
 | `chrome.userScripts` | User scripts | ⬜ | нет |
 | `chrome.offscreen` | Скрытые документы | ✅ | шим (скрытое окно + autoplay) |
 | `chrome.omnibox` | Адресная строка | ⬜ | нет |
-| `chrome.search` | Поиск | ⬜ | нет |
+| `chrome.search` | Поиск | ✅ | мост (/search → открытие вкладки) |
 | `chrome.dom` | DOM API | ⬜ | нет |
 | `chrome.tabCapture` | Захват вкладки | ⬜ | нет |
 | `chrome.desktopCapture` | Захват экрана | 🟡 | частично (Electron desktopCapturer) |
@@ -51,13 +51,13 @@
 
 | API | Назначение | Статус | Чем обеспечено |
 |---|---|---|---|
-| `chrome.bookmarks` | Закладки | ⬜ | нет (своя система, без расширений) |
-| `chrome.history` | История | ⬜ | нет |
+| `chrome.bookmarks` | Закладки | ✅ | мост (bm-gettree/create/remove/search) |
+| `chrome.history` | История | ✅ | мост (hist-search/add/del/delall) |
 | `chrome.downloads` | Загрузки | ✅ | мост (fetch → save в main) |
-| `chrome.browsingData` | Очистка данных | ⬜ | нет |
-| `chrome.topSites` | Топ-сайты | ⬜ | нет |
+| `chrome.browsingData` | Очистка данных | ✅ | мост (/browsingdata) |
+| `chrome.topSites` | Топ-сайты | ✅ | мост (/topsites из истории) |
 | `chrome.readingList` | Список чтения | ⬜ | нет |
-| `chrome.sessions` | Сессии | ⬜ | нет |
+| `chrome.sessions` | Сессии | 🟡 | стаб (getRecentlyClosed/restore) |
 | `chrome.tabGroups` | Группы вкладок | ⬜ | нет |
 | `chrome.pageCapture` | MHTML | ⬜ | нет |
 
@@ -66,8 +66,8 @@
 | API | Назначение | Статус | Чем обеспечено |
 |---|---|---|---|
 | `chrome.notifications` | Уведомления | ✅ | electron-chrome-extensions |
-| `chrome.alarms` | Таймеры | 🟡 | стаб (без реальных таймеров) |
-| `chrome.commands` | Горячие клавиши | 🟡 | стаб (без глобальных хоткеев) |
+| `chrome.alarms` | Таймеры | ✅ | реальные таймеры (delay/period + onAlarm) |
+| `chrome.commands` | Горячие клавиши | ✅ | глобальные хоткеи (globalShortcut + onCommand) |
 | `chrome.tts` | Синтез речи | ⬜ | нет |
 | `chrome.ttsEngine` | Движок TTS | ⬜ | нет |
 | `chrome.audio` | Аудиоустройства | 🚫 | ChromeOS |
@@ -100,7 +100,7 @@
 | `chrome.management` | Управление расширениями | ✅ | Electron (частично) |
 | `chrome.processes` | Процессы | ⬜ | нет |
 | `chrome.system.cpu` | CPU | ⬜ | нет |
-| `chrome.system.display` | Дисплеи | ⬜ | нет |
+| `chrome.system.display` | Дисплеи | ✅ | мост (/sysdisplay → Electron screen) |
 | `chrome.system.memory` | Память | ⬜ | нет |
 | `chrome.system.storage` | Накопители | ⬜ | нет |
 | `chrome.systemLog` | Системные логи | 🚫 | ChromeOS |
@@ -119,13 +119,13 @@
 | Категория | Всего | Работает |
 |---|---|---|
 | Базовые | 11 | 11 (100%) |
-| Сеть/приватность | 8 | 6 (75%) |
+| Сеть/приватность | 8 | 5 (62%) |
 | Контент/скрипты | 8 | 4 (50%) |
-| Данные браузера | 9 | 1 (11%) |
-| Уведомления/медиа | 8 | 2 (25%) |
+| Данные браузера | 9 | 5 (56%) |
+| Уведомления/медиа | 8 | 3 (38%) |
 | UI | 3 | 2 (67%) |
 | Auth/безопасность | 4 | 0 |
-| Разработка | 12 | 3 (25%) |
+| Разработка | 12 | 4 (33%) |
 | ChromeOS | 13 | 0 (не нужно) |
 
-**Наиболее востребованные недостающие:** `bookmarks`, `history`, `browsingData`, `identity`, `commands` (глобальные), `alarms` (реальные), `omnibox`, `contextMenus` уже есть, `sidePanel` стаб.
+**Наиболее востребованные недостающие:** `identity` (getAuthToken/launchWebAuthFlow — VK web_token/OAuth), `omnibox`, `declarativeContent`, `tabGroups`, `userScripts`, `idle`, `tts`, `desktopCapture`.
