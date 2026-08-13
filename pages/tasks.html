@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src * data:; connect-src *">
+<title>Диспетчер задач</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: system-ui, 'Segoe UI', sans-serif;
+  background: #ffffff;
+  color: #202124;
+  padding: 24px 28px;
+}
+h1 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+.sub { font-size: 12px; color: #5f6368; margin-bottom: 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left;
+  font-weight: 500;
+  color: #5f6368;
+  border-bottom: 1px solid #dadce0;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+tbody td {
+  border-bottom: 1px solid #f1f3f4;
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+tbody tr:hover { background: #f8f9fa; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.pid { color: #5f6368; font-size: 12px; }
+.name-cell { display: flex; align-items: center; gap: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: #1a73e8; flex-shrink: 0; }
+.dot.ext { background: #9334e6; }
+.dot.sys { background: #80868b; }
+.url { font-size: 11px; color: #80868b; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kill-btn {
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #e8eaed;
+  color: #202124;
+}
+.kill-btn:hover { background: #d5d8dc; }
+.kill-btn:disabled { opacity: 0.4; cursor: default; }
+.footer {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #5f6368;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.refresh-note { font-size: 11px; color: #9aa0a6; }
+</style>
+</head>
+<body>
+  <h1>Диспетчер задач</h1>
+  <div class="sub">Процессы BunPinokWeb: вкладки, расширения, служебные процессы. Обновляется автоматически.</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Задача</th>
+        <th style="text-align:right">Память</th>
+        <th style="text-align:right">ЦП</th>
+        <th style="text-align:right">Идентификатор процесса</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <div class="footer">
+    <span id="total"></span>
+    <span class="refresh-note">Обновление каждые 2 секунды · Shift+Esc — открыть диспетчер</span>
+  </div>
+  <script>
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+    function fmtMemory(kb) {
+      const mb = kb / 1024;
+      if (mb >= 1024) {
+        return (mb / 1024).toFixed(2) + ' ГБ';
+      }
+      if (mb >= 10) {
+        return Math.round(mb) + ' МБ';
+      }
+      return mb.toFixed(1) + ' МБ';
+    }
+    async function refresh() {
+      const data = await window.browserAPI.tasks.getList();
+      const rows = document.getElementById('rows');
+      let html = '';
+      for (const item of data.items) {
+        let dotClass = 'sys';
+        if (item.url && item.url.startsWith('chrome-extension://')) {
+          dotClass = 'ext';
+        } else if (item.type === 'Tab') {
+          dotClass = '';
+        }
+        const titleHtml = escapeHtml(item.name) + (item.url && item.name.indexOf('Вкладка:') === 0 ? '<div class="url">' + escapeHtml(item.url) + '</div>' : '');
+        const killBtn = item.killable
+          ? '<button class="kill-btn" data-pid="' + item.pid + '">Завершить</button>'
+          : '<button class="kill-btn" disabled>—</button>';
+        html += '<tr>' +
+          '<td><div class="name-cell"><span class="dot ' + dotClass + '"></span><div>' + titleHtml + '</div></div></td>' +
+          '<td class="num">' + fmtMemory(item.memoryKB) + '</td>' +
+          '<td class="num">' + item.cpu.toFixed(1) + '%</td>' +
+          '<td class="num pid">' + item.pid + '</td>' +
+          '<td>' + killBtn + '</td>' +
+          '</tr>';
+      }
+      rows.innerHTML = html;
+      document.getElementById('total').textContent =
+        'Всего процессов: ' + data.items.length + ' · Суммарно памяти: ' + fmtMemory(data.totalMemoryKB);
+      rows.querySelectorAll('.kill-btn[data-pid]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = '…';
+          await window.browserAPI.tasks.kill(parseInt(btn.dataset.pid, 10));
+          refresh();
+        });
+      });
+    }
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

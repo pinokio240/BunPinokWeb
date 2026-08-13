@@ -157,5 +157,10 @@ contextBridge.exposeInMainWorld('browserAPI', {
         clear: () => ipcRenderer.invoke('logs:clear'),
         getPath: () => ipcRenderer.invoke('logs:getPath'),
         export: () => ipcRenderer.invoke('logs:export')
+    },
+
+    tasks: {
+        getList: () => ipcRenderer.invoke('tasks:getList'),
+        kill: (pid) => ipcRenderer.invoke('tasks:kill', pid)
     }
 });

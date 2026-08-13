@@ -204,7 +204,8 @@ function setupProtocolHandler() {
             'about': 'pages/about.html',
             'reader': 'pages/reader.html',
             'logs': 'pages/logs.html',
-            'offline': 'pages/offline.html'
+            'offline': 'pages/offline.html',
+            'tasks': 'pages/tasks.html'
         };
 
         const filePath = pageMap[pageName];
@@ -712,8 +713,9 @@ function setupIpcHandlers() {
             { label: 'Уменьшить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(t.view.webContents.getZoomLevel() - 0.5); } } },
             { label: 'Сбросить масштаб', click: () => { const t = tabManager.getActiveTab(); if (t) { t.view.webContents.setZoomLevel(0); } } },
             { type: 'separator' },
-            { label: 'О браузере', click: () => { tabManager.createTab('browser://about'); updateChromeViewBounds(); } },
-            { label: 'Журнал браузера', click: () => { tabManager.createTab('browser://logs'); updateChromeViewBounds(); } },
+                { label: 'О браузере', click: () => { tabManager.createTab('browser://about'); updateChromeViewBounds(); } },
+                { label: 'Журнал браузера', click: () => { tabManager.createTab('browser://logs'); updateChromeViewBounds(); } },
+                { label: 'Диспетчер задач', click: () => { tabManager.createTab('browser://tasks'); updateChromeViewBounds(); } },
             { label: 'Во весь экран', click: () => { if (mainWindow) { mainWindow.setFullScreen(!mainWindow.isFullScreen()); } } },
             { type: 'separator' },
             { label: 'Выход', click: () => { app.quit(); } }
@@ -1010,6 +1012,82 @@ function setupIpcHandlers() {
         } catch (err) {
             return { success: false, error: err.message };
         }
+    });
+
+    ipcMain.handle('tasks:getList', () => {
+        const metrics = app.getAppMetrics();
+        const allWc = webContents.getAllWebContents();
+        const wcByPid = new Map();
+        for (const wc of allWc) {
+            try {
+                if (!wc.isDestroyed()) {
+                    wcByPid.set(wc.getOSProcessId(), wc);
+                }
+            } catch (err) {
+                // webContents недоступен
+            }
+        }
+        const items = [];
+        let totalMemoryKB = 0;
+        for (const m of metrics) {
+            const pid = m.pid;
+            let name = 'Процесс';
+            let title = '';
+            let url = '';
+            let killable = false;
+            const wc = wcByPid.get(pid);
+            if (wc) {
+                title = wc.getTitle() || '';
+                url = wc.getURL() || '';
+                killable = true;
+            }
+            if (m.type === 'Browser') {
+                name = 'Браузер';
+            } else if (m.type === 'GPU') {
+                name = 'GPU-процесс';
+            } else if (m.type === 'Utility') {
+                name = 'Служебный процесс';
+            } else if (url && url.startsWith('chrome-extension://')) {
+                name = 'Расширение';
+            } else if (wc) {
+                name = 'Вкладка';
+            } else if (m.type === 'Tab') {
+                name = 'Вкладка';
+            }
+            if (title && name === 'Вкладка') {
+                name = 'Вкладка: ' + title;
+            }
+            const memoryKB = m.memory && m.memory.workingSetSize ? m.memory.workingSetSize : 0;
+            totalMemoryKB += memoryKB;
+            items.push({
+                pid: pid,
+                type: m.type,
+                name: name,
+                title: title,
+                url: url,
+                cpu: Math.round((m.cpu && m.cpu.percentCPUUsage ? m.cpu.percentCPUUsage : 0) * 10) / 10,
+                memoryKB: memoryKB,
+                killable: killable
+            });
+        }
+        items.sort((a, b) => b.memoryKB - a.memoryKB);
+        return { items: items, totalMemoryKB: totalMemoryKB };
+    });
+
+    ipcMain.handle('tasks:kill', (_event, pid) => {
+        const allWc = webContents.getAllWebContents();
+        for (const wc of allWc) {
+            try {
+                if (!wc.isDestroyed() && wc.getOSProcessId() === pid) {
+                    wc.forcefullyCrashRenderer();
+                    logger.info('tasks', 'Процесс завершён: ' + pid + ' (' + wc.getURL() + ')');
+                    return { success: true };
+                }
+            } catch (err) {
+                // пропускаем
+            }
+        }
+        return { success: false, error: 'Процесс не найден' };
     });
 }
 
@@ -1357,6 +1435,8 @@ app.whenReady().then(async () => {
                 { label: 'Обновить', accelerator: 'Ctrl+R', click: () => { const t = tabManager.getActiveTab(); if (t) t.view.webContents.reload(); } },
                 { type: 'separator' },
                 { label: 'Закрыть вкладку', accelerator: 'Ctrl+W', click: () => { const t = tabManager.getActiveTab(); if (t) { tabManager.closeTab(t.id); updateChromeViewBounds(); if (tabManager.getTabCount() === 0) { tabManager.createTab('browser://newtab'); updateChromeViewBounds(); } } } },
+                { type: 'separator' },
+                { label: 'Диспетчер задач', accelerator: 'Shift+Esc', click: () => { tabManager.createTab('browser://tasks'); updateChromeViewBounds(); } },
                 { type: 'separator' },
                 { label: 'Инструменты разработчика', accelerator: 'F12', click: () => { const t = tabManager.getActiveTab(); if (t) { tabManager.toggleDevTools(t.id); } } },
                 { type: 'separator' },
