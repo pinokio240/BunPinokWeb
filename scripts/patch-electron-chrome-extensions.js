@@ -23,6 +23,11 @@ const replacements = [
         from: /delete globalThis\.electron;\n\s*Object\.freeze\(chrome\);/g,
         to: 'delete globalThis.electron;',
         name: 'Object.freeze(chrome)'
+    },
+    {
+        from: /^(\s*)import_electron2\.contextBridge\.exposeInMainWorld\("electron", electronContext\);$/gm,
+        to: '$1try { import_electron2.contextBridge.exposeInMainWorld("electron", electronContext); } catch (bindErr) { try { window.electron = electronContext; } catch (bindErr2) {} }',
+        name: 'exposeInMainWorld guard'
     }
 ];
 

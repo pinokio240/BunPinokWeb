@@ -983,7 +983,7 @@ export function prepareExtensionForElectron(extPath, mode) {
             const worker = manifest.background.service_worker;
             const wrapperName = 'bunpinok-sw-wrapper.js';
             const wrapperPath = path.join(extPath, wrapperName);
-            const wrapperContent = "importScripts('electron-compat.js');\nimportScripts('" + worker + "');\n";
+            const wrapperContent = "import './electron-compat.js';\nimport './" + worker + "';\n";
             const existing = fs.existsSync(wrapperPath) ? fs.readFileSync(wrapperPath, 'utf-8') : '';
             if (existing !== wrapperContent) {
                 fs.writeFileSync(wrapperPath, wrapperContent, 'utf-8');
