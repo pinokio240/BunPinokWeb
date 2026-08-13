@@ -62,6 +62,12 @@ function getInitiatorDomain(details) {    let origin = '';
 
 function domainMatches(host, domainList) {
     for (const domain of domainList) {
+        if (domain === 'chrome-extension') {
+            if (/^[a-p]{32}$/.test(host)) {
+                return true;
+            }
+            continue;
+        }
         if (host === domain) {
             return true;
         }
@@ -72,10 +78,32 @@ function domainMatches(host, domainList) {
     return false;
 }
 
+const BUILTIN_VK_RULES = [
+    {
+        id: 9001,
+        action: { type: 'modifyHeaders', requestHeaders: [{ header: 'origin', operation: 'set', value: 'https://vk.ru/' }] },
+        condition: { urlFilter: 'https://login.vk.ru/*act=web_token*', initiatorDomains: ['chrome-extension'] }
+    },
+    {
+        id: 9002,
+        action: { type: 'modifyHeaders', requestHeaders: [{ header: 'origin', operation: 'set', value: 'https://vk.ru/' }] },
+        condition: { urlFilter: 'https://api.vk.ru/*', initiatorDomains: ['chrome-extension'] }
+    },
+    {
+        id: 9003,
+        action: { type: 'modifyHeaders', requestHeaders: [{ header: 'origin', operation: 'set', value: 'https://vk.ru/' }] },
+        condition: { urlFilter: 'https://vk.ru/al_audio.php*', initiatorDomains: ['chrome-extension'] }
+    }
+];
+
 export class DnrBridge {
     constructor(settingsStore) {
         this.settingsStore = settingsStore;
         this.rules = [];
+        this._dnrLogged = new Set();
+        for (const rule of BUILTIN_VK_RULES) {
+            this.rules.push(rule);
+        }
         this.downloads = [];
         this.nextDownloadId = 1;
         this.logger = null;
@@ -1028,6 +1056,10 @@ export class DnrBridge {
             for (const rule of this.rules) {
                 if (!this._matches(details, rule.condition)) {
                     continue;
+                }
+                if (rule.id >= 9000 && this.logger && !this._dnrLogged.has(details.url) && this._dnrLogged.size < 50) {
+                    this._dnrLogged.add(details.url);
+                    this.logger.info('dnr', 'Правило VK применено к ' + details.url.slice(0, 140));
                 }
                 if (rule.action && rule.action.type === 'modifyHeaders' && Array.isArray(rule.action.requestHeaders)) {
                     for (const op of rule.action.requestHeaders) {

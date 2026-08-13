@@ -35,6 +35,7 @@ const UNKNOWN_PERMISSIONS = [
 ];
 
 const COMPAT_SHIM = `(function () {
+    try {
     if (typeof chrome === 'undefined') {
         return;
     }
@@ -174,6 +175,8 @@ const COMPAT_SHIM = `(function () {
     }
     if (!chrome.action) {
         chrome.action = {};
+    }
+    if (chrome.action && !chrome.action.setBadgeText) {
         const fake = function (cb) { if (cb) { cb(); } };
         chrome.action.setBadgeText = function (d, cb) { if (cb) { cb(); } };
         chrome.action.setBadgeBackgroundColor = function (d, cb) { if (cb) { cb(); } };
@@ -444,8 +447,8 @@ const COMPAT_SHIM = `(function () {
                 }).then(function (r) { return r.json(); }).then(function (data) { if (cb) { cb(data && data.has === true); } }).catch(function () { if (cb) { cb(false); } });
             }
         };
-        chrome.offscreen.REASON = chrome.offscreen.Reason;
-    } else {
+    }
+    if (chrome.offscreen) {
         if (!chrome.offscreen.Reason) {
             chrome.offscreen.Reason = {
                 AUDIO_PLAYBACK: 'AUDIO_PLAYBACK',
@@ -476,6 +479,8 @@ const COMPAT_SHIM = `(function () {
     }
     if (!chrome.i18n) {
         chrome.i18n = {};
+    }
+    if (chrome.i18n && !chrome.i18n.getMessage) {
         let i18nMessages = null;
         try {
             const xhr = new XMLHttpRequest();
@@ -897,6 +902,9 @@ const COMPAT_SHIM = `(function () {
                 if (cb) { cb(); }
             }
         };
+    }
+    } catch (err) {
+        try { console.error('[bunpinok-shim] ' + (err && err.message ? err.message : String(err))); } catch (err2) { }
     }
 })();`;
 

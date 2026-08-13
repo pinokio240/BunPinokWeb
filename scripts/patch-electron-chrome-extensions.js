@@ -11,11 +11,32 @@ if (!fs.existsSync(target)) {
 }
 
 let content = fs.readFileSync(target, 'utf-8');
-const before = content;
-content = content.replace(/if \(true\) \{\n\s*console\.log/g, 'if (false) {\n      console.log');
-if (content === before) {
+let patched = false;
+
+const replacements = [
+    {
+        from: /if \(true\) \{\n\s*console\.log/g,
+        to: 'if (false) {\n      console.log',
+        name: 'debug-спам'
+    },
+    {
+        from: /delete globalThis\.electron;\n\s*Object\.freeze\(chrome\);/g,
+        to: 'delete globalThis.electron;',
+        name: 'Object.freeze(chrome)'
+    }
+];
+
+for (const replacement of replacements) {
+    if (replacement.from.test(content)) {
+        content = content.replace(replacement.from, replacement.to);
+        patched = true;
+        console.log('[bunpinokweb] применён патч: ' + replacement.name);
+    }
+}
+
+if (!patched) {
     console.log('[bunpinokweb] патч не требуется');
     process.exit(0);
 }
 fs.writeFileSync(target, content, 'utf-8');
-console.log('[bunpinokweb] chrome-extension-api.preload.js пропатчен: debug-спам выключен');
+console.log('[bunpinokweb] chrome-extension-api.preload.js пропатчен');
