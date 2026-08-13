@@ -148,6 +148,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
     logs: {
         read: () => ipcRenderer.invoke('logs:read'),
         clear: () => ipcRenderer.invoke('logs:clear'),
-        getPath: () => ipcRenderer.invoke('logs:getPath')
+        getPath: () => ipcRenderer.invoke('logs:getPath'),
+        export: () => ipcRenderer.invoke('logs:export')
     }
 });

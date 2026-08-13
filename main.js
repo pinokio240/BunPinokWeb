@@ -903,6 +903,29 @@ function setupIpcHandlers() {
             chromium: path.join(app.getPath('userData'), 'logs', 'chromium.log')
         };
     });
+
+    ipcMain.handle('logs:export', () => {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const result = dialog.showSaveDialogSync(mainWindow, {
+            title: 'Экспортировать журнал',
+            defaultPath: path.join(app.getPath('downloads'), 'bunpinokweb-log-' + stamp + '.txt'),
+            buttonLabel: 'Сохранить',
+            filters: [
+                { name: 'Текстовый файл', extensions: ['txt'] }
+            ]
+        });
+        if (!result) {
+            return { success: false, error: 'Отменено' };
+        }
+        try {
+            const content = logger.readTail(100000);
+            fs.writeFileSync(result, content, 'utf-8');
+            logger.info('logs', 'Журнал экспортирован: ' + result);
+            return { success: true, path: result };
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    });
 }
 
 function parseUserInput(input) {
