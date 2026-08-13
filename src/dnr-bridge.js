@@ -19,8 +19,20 @@ function globToRegex(pattern) {
     return out + '$';
 }
 
-function getInitiatorDomain(details) {
-    let origin = '';
+function matchPatternToRegex(pattern) {
+    const parts = pattern.split('://');
+    const scheme = parts[0];
+    const rest = parts.length > 1 ? parts[1] : '';
+    const slashIdx = rest.indexOf('/');
+    const host = slashIdx >= 0 ? rest.slice(0, slashIdx) : rest;
+    const pathPart = slashIdx >= 0 ? rest.slice(slashIdx) : '/*';
+    const schemeRe = scheme === '*' ? '(https?|wss?)' : scheme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const hostRe = host === '*' ? '[^/]+' : host.replace(/\*/g, '[^/]*').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pathRe = pathPart.replace(/\*/g, '.*').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp('^' + schemeRe + '://' + hostRe + pathRe);
+}
+
+function getInitiatorDomain(details) {    let origin = '';
     if (details.referrer) {
         try {
             origin = new URL(details.referrer).origin;
@@ -68,6 +80,10 @@ export class DnrBridge {
         this.nextDownloadId = 1;
         this.logger = null;
         this.offscreenWindows = new Map();
+        this.wrListeners = [];
+        this.pendingQueries = [];
+        this.wrAnswers = new Map();
+        this.wrSeq = 0;
         this._startServer();
         this._setupWebRequest();
     }
@@ -117,6 +133,23 @@ export class DnrBridge {
                         const win = this.offscreenWindows.get(payload.extId);
                         const has = win !== undefined && !win.isDestroyed();
                         this._json(res, { has: has });
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/webrq-register') {
+                        const payload = JSON.parse(body);
+                        this._registerWebRequestListener(payload);
+                        this._json(res, { success: true });
+                        return;
+                    }
+                    if (req.method === 'GET' && req.url === '/webrq-pending') {
+                        const delivered = this.pendingQueries.splice(0, this.pendingQueries.length);
+                        this._json(res, delivered);
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/webrq-answer') {
+                        const payload = JSON.parse(body);
+                        this.wrAnswers.set(payload.queryId, payload.response);
+                        this._json(res, { success: true });
                         return;
                     }
                     res.writeHead(404);
@@ -243,7 +276,124 @@ export class DnrBridge {
         console.log('DNR мост: правил активных — ' + this.rules.length);
     }
 
+    _registerWebRequestListener(payload) {
+        const listener = {
+            listenerId: payload.listenerId,
+            event: payload.event,
+            urls: Array.isArray(payload.urls) ? payload.urls : [],
+            types: Array.isArray(payload.types) ? payload.types : [],
+            blocking: payload.blocking === true
+        };
+        this.wrListeners = this.wrListeners.filter((existing) => {
+            return existing.listenerId !== listener.listenerId;
+        });
+        this.wrListeners.push(listener);
+        if (this.logger) {
+            this.logger.info('webRequest', 'Зарегистрирован слушатель ' + listener.event + ' (id=' + listener.listenerId + ', blocking=' + listener.blocking + ')');
+        }
+    }
+
+    _matchesWrListener(listener, details) {
+        if (listener.urls.length > 0) {
+            let urlMatched = false;
+            for (const pattern of listener.urls) {
+                const regex = matchPatternToRegex(pattern);
+                if (regex.test(details.url)) {
+                    urlMatched = true;
+                    break;
+                }
+            }
+            if (!urlMatched) {
+                return false;
+            }
+        }
+        if (listener.types.length > 0 && !listener.types.includes(details.resourceType)) {
+            return false;
+        }
+        return true;
+    }
+
+    _queryWebRequestListeners(event, details) {
+        const matches = this.wrListeners.filter((listener) => {
+            return listener.event === event && this._matchesWrListener(listener, details);
+        });
+        if (matches.length === 0) {
+            return Promise.resolve(null);
+        }
+        const pending = [];
+        for (const listener of matches) {
+            const queryId = 'q-' + (++this.wrSeq);
+            pending.push({
+                queryId: queryId,
+                listenerId: listener.listenerId,
+                details: {
+                    url: details.url,
+                    method: details.method,
+                    type: details.resourceType,
+                    tabId: -1,
+                    frameId: 0,
+                    requestHeaders: details.requestHeaders || {},
+                    responseHeaders: details.responseHeaders || {}
+                }
+            });
+        }
+        this.pendingQueries.push(...pending);
+        return new Promise((resolve) => {
+            const answers = {};
+            const startedAt = Date.now();
+            const check = () => {
+                let allAnswered = true;
+                for (const query of pending) {
+                    const answer = this.wrAnswers.get(query.queryId);
+                    if (answer !== undefined) {
+                        answers[query.queryId] = answer;
+                    } else {
+                        allAnswered = false;
+                    }
+                }
+                if (allAnswered || Date.now() - startedAt > 2500) {
+                    resolve(answers);
+                } else {
+                    setTimeout(check, 40);
+                }
+            };
+            check();
+        });
+    }
+
+    _applyWebRequestAnswers(answers, callback, kind) {
+        if (!answers) {
+            callback({});
+            return;
+        }
+        for (const key of Object.keys(answers)) {
+            const response = answers[key];
+            if (!response || typeof response !== 'object') {
+                continue;
+            }
+            if (kind === 'request' && response.cancel === true) {
+                callback({ cancel: true });
+                return;
+            }
+            if (kind === 'request' && response.redirectUrl) {
+                callback({ redirectURL: response.redirectUrl });
+                return;
+            }
+        }
+        callback({});
+    }
+
     _setupWebRequest() {
+        session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
+            if (this.wrListeners.length === 0) {
+                callback({});
+                return;
+            }
+            this._queryWebRequestListeners('onBeforeRequest', details).then((answers) => {
+                this._applyWebRequestAnswers(answers, callback, 'request');
+            });
+        });
+
         session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
             const headers = {};
             for (const key of Object.keys(details.requestHeaders)) {
@@ -270,7 +420,32 @@ export class DnrBridge {
                     }
                 }
             }
-            callback({ requestHeaders: headers });
+            if (this.wrListeners.length === 0) {
+                callback({ requestHeaders: headers });
+                return;
+            }
+            this._queryWebRequestListeners('onBeforeSendHeaders', details).then((answers) => {
+                if (answers) {
+                    for (const key of Object.keys(answers)) {
+                        const response = answers[key];
+                        if (response && response.requestHeaders) {
+                            for (const headerKey of Object.keys(response.requestHeaders)) {
+                                const value = response.requestHeaders[headerKey];
+                                if (value === null || value === undefined) {
+                                    delete headers[headerKey];
+                                } else {
+                                    headers[headerKey] = value;
+                                }
+                            }
+                        }
+                        if (response && response.cancel === true) {
+                            callback({ cancel: true });
+                            return;
+                        }
+                    }
+                }
+                callback({ requestHeaders: headers });
+            });
         });
 
         session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

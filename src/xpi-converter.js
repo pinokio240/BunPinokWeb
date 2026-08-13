@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import AdmZip from 'adm-zip';
 
 const POLYFILL = `(function () {
-    if (typeof globalThis !== 'undefined' && typeof globalThis.browser !== 'undefined' && globalThis.browserApi.runtime && globalThis.browserApi.runtime.id) {
+    if (typeof globalThis !== 'undefined' && typeof globalThis.browser !== 'undefined' && globalThis.browser.runtime && globalThis.browser.runtime.id) {
         return;
     }
     const chromeObj = (typeof chrome !== 'undefined') ? chrome : null;
@@ -35,11 +35,16 @@ const POLYFILL = `(function () {
     function event(api, name) {
         Object.defineProperty(api, name, {
             value: {
-                addListener: function (fn) {
+                addListener: function (fn, filter, extraInfoSpec) {
                     if (chromeObj && chromeObj[name] && chromeObj[name].addListener) {
-                        chromeObj[name].addListener(function () {
+                        const wrapped = function () {
                             return fn.apply(null, arguments);
-                        });
+                        };
+                        if (filter || extraInfoSpec) {
+                            chromeObj[name].addListener(wrapped, filter, extraInfoSpec);
+                        } else {
+                            chromeObj[name].addListener(wrapped);
+                        }
                     }
                 },
                 removeListener: function (fn) {

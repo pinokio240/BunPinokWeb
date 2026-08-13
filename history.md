@@ -1,5 +1,21 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.9 — Privacy Badger: Full Chrome API Bridge
+
+### Study (Privacy Badger AMO)
+API usage: chrome.runtime(96), chrome.tabs(35), chrome.webRequest(30, blocking!), chrome.i18n(24), chrome.privacy(22), chrome.storage(15), chrome.browserAction(13), chrome.alarms(4), chrome.webNavigation(2)
+
+### Found & Fixed
+- [x] БАГ в нашем полифилле: guard сломан (globalThis.browserApi вместо .browser) → TypeError на каждой странице. Privacy Badger использует chrome.* напрямую — полифилл не критичен, но ошибки засоряли лог
+- [x] event() в полифилле: проброс filter/extraInfoSpec для webRequest
+- [x] chrome.i18n: синхронный XHR _locales/ru/messages.json + getMessage с подстановками
+- [x] chrome.privacy: стабы network/services/websites (get/set/clear)
+- [x] **webRequest-мост**: главное. Electron-док: наш webRequest отключает chrome.webRequest расширений!
+  - Шим: addListener → регистрация в main + poll pending + ответ
+  - Main: onBeforeRequest/onBeforeSendHeaders запросы к слушателям, cancel/redirect/headers
+  - match-паттерны Chrome (http://*/* → regex), types-фильтр
+- [x] Полифилл guard починен
+
 ## 2026-08-13 — v0.6.8 — Log Export + storage.sync + Store Key Extraction
 
 ### Log page

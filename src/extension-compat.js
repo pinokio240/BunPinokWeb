@@ -273,8 +273,127 @@ const COMPAT_SHIM = `(function () {
             SIDE_PANEL: 'SIDE_PANEL'
         };
     }
-    if (!chrome.runtime.getContexts) {
-        chrome.runtime.getContexts = function (filter) {
+    if (!chrome.i18n) {
+        chrome.i18n = {};
+        let i18nMessages = null;
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', chrome.runtime.getURL('_locales/ru/messages.json'), false);
+            xhr.send(null);
+            if (xhr.status === 200) {
+                i18nMessages = JSON.parse(xhr.responseText);
+            }
+        } catch (err) {
+            i18nMessages = null;
+        }
+        chrome.i18n.getMessage = function (name, substitutions) {
+            let message = name;
+            if (i18nMessages && i18nMessages[name] && i18nMessages[name].message) {
+                message = i18nMessages[name].message;
+            }
+            if (substitutions && substitutions.length) {
+                for (let i = 0; i < substitutions.length; i++) {
+                    message = message.replace('$' + (i + 1), String(substitutions[i]));
+                }
+            }
+            return message;
+        };
+        chrome.i18n.getUILanguage = function () { return 'ru'; };
+    }
+    if (!chrome.privacy) {
+        const privacyStub = function () {
+            return {
+                get: function (details, cb) { if (cb) { cb({ value: false, levelOfControl: 'not_controllable' }); } },
+                set: function (details, cb) { if (cb) { cb(true); } },
+                clear: function (details, cb) { if (cb) { cb(true); } }
+            };
+        };
+        const privacySettings = {
+            thirdPartyCookiesAllowed: privacyStub(),
+            hyperlinkAuditingEnabled: privacyStub(),
+            referrersEnabled: privacyStub(),
+            protectedContentEnabled: privacyStub(),
+            doNotTrackEnabled: privacyStub(),
+            safeBrowsingEnabled: privacyStub(),
+            autofillEnabled: privacyStub(),
+            alternateErrorPagesEnabled: privacyStub()
+        };
+        chrome.privacy = {
+            network: {
+                networkPredictionEnabled: privacyStub(),
+                webRTCIPHandlingPolicy: privacyStub(),
+                webRTCNonProxiedUdpEnabled: privacyStub(),
+                globalPrivacyControlEnabled: privacyStub(),
+                httpsOnlyMode: privacyStub()
+            },
+            services: {
+                passwordSavingEnabled: privacyStub(),
+                safeBrowsingEnabled: privacyStub(),
+                safeBrowsingExtendedReportingEnabled: privacyStub(),
+                searchSuggestEnabled: privacyStub(),
+                spellingServiceEnabled: privacyStub(),
+                translationServiceEnabled: privacyStub(),
+                autofillAddressEnabled: privacyStub(),
+                autofillCreditCardEnabled: privacyStub()
+            },
+            websites: privacySettings
+        };
+    }
+    if (chrome.webRequest) {
+        const bridgeBase = 'http://127.0.0.1:33123';
+        const wrListenerRegistry = {};
+        let wrSeq = 0;
+        const wrEvents = ['onBeforeRequest', 'onBeforeSendHeaders', 'onHeadersReceived', 'onSendHeaders', 'onCompleted', 'onErrorOccurred'];
+        for (const evtName of wrEvents) {
+            const api = chrome.webRequest[evtName];
+            if (!api || !api.addListener || api.__bunpinokHooked) {
+                continue;
+            }
+            const origAdd = api.addListener.bind(api);
+            api.addListener = function (fn, filter, extra) {
+                const listenerId = 'wr-' + (++wrSeq);
+                const extraList = Array.isArray(extra) ? extra : [];
+                wrListenerRegistry[listenerId] = { fn: fn, extra: extraList };
+                const urls = filter && Array.isArray(filter.urls) ? filter.urls : [];
+                const types = filter && Array.isArray(filter.types) ? filter.types : [];
+                const blocking = extraList.includes('blocking');
+                fetch(bridgeBase + '/webrq-register', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ listenerId: listenerId, event: evtName, urls: urls, types: types, blocking: blocking })
+                }).catch(function () {});
+                try { origAdd(fn, filter, extra); } catch (err) { }
+            };
+            api.__bunpinokHooked = true;
+        }
+        setInterval(function () {
+            fetch(bridgeBase + '/webrq-pending').then(function (r) { return r.json(); }).then(function (queries) {
+                if (!queries || queries.length === 0) {
+                    return;
+                }
+                for (const query of queries) {
+                    const listener = wrListenerRegistry[query.listenerId];
+                    let response = {};
+                    if (listener) {
+                        try {
+                            const ret = listener.fn(query.details);
+                            if (ret) {
+                                response = ret;
+                            }
+                        } catch (err) {
+                            response = {};
+                        }
+                    }
+                    fetch(bridgeBase + '/webrq-answer', {
+                        method: 'POST',
+                        headers: { 'content-type': 'application/json' },
+                        body: JSON.stringify({ queryId: query.queryId, response: response })
+                    }).catch(function () {});
+                }
+            }).catch(function () {});
+        }, 60);
+    }
+    if (!chrome.runtime.getContexts) {        chrome.runtime.getContexts = function (filter) {
             const extId = chrome.runtime.id;
             return fetch('http://127.0.0.1:33123/offscreen-has', {
                 method: 'POST',
