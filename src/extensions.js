@@ -345,7 +345,49 @@ export class ExtensionManager {
                 console.error('Не удалось удалить папку расширения:', err);
             }
         }
+        this._wipeExtensionData(extId);
         return true;
+    }
+
+    _wipeExtensionData(extId) {
+        const userData = app.getPath('userData');
+        const extIdDirs = [
+            path.join(userData, 'Local Extension Settings', extId),
+            path.join(userData, 'Sync Extension Settings', extId),
+            path.join(userData, 'Managed Extension Settings', extId),
+            path.join(userData, 'DNR Extension Rules', extId)
+        ];
+        for (const dir of extIdDirs) {
+            try {
+                if (fs.existsSync(dir)) {
+                    fs.rmSync(dir, { recursive: true, force: true });
+                }
+            } catch (err) {
+                console.error('Не удалось удалить данные расширения:', dir, err);
+            }
+        }
+
+        const sweepRoots = [
+            path.join(userData, 'IndexedDB'),
+            path.join(userData, 'Service Worker'),
+            path.join(userData, 'Cache'),
+            path.join(userData, 'File System')
+        ];
+        for (const root of sweepRoots) {
+            try {
+                if (!fs.existsSync(root)) {
+                    continue;
+                }
+                const entries = fs.readdirSync(root, { withFileTypes: true });
+                for (const entry of entries) {
+                    if (entry.name.includes(extId)) {
+                        fs.rmSync(path.join(root, entry.name), { recursive: true, force: true });
+                    }
+                }
+            } catch (err) {
+                console.error('Не удалось очистить данные расширения в:', root, err);
+            }
+        }
     }
 
     getExtension(extId) {
