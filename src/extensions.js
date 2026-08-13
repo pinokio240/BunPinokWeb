@@ -191,6 +191,16 @@ export class ExtensionManager {
             popup = popup.slice(1);
         }
 
+        let optionsPage = '';
+        if (manifest.options_ui && manifest.options_ui.page) {
+            optionsPage = manifest.options_ui.page;
+        } else if (manifest.options_page) {
+            optionsPage = manifest.options_page;
+        }
+        if (optionsPage.startsWith('/')) {
+            optionsPage = optionsPage.slice(1);
+        }
+
         const entry = {
             id: ext.id,
             name: name,
@@ -199,6 +209,7 @@ export class ExtensionManager {
             path: extPath,
             enabled: true,
             popup: popup,
+            optionsPage: optionsPage,
             icon: icon,
             manifest: manifest,
             extension: ext
@@ -223,6 +234,7 @@ export class ExtensionManager {
             existing.version = entry.version;
             existing.description = entry.description;
             existing.popup = entry.popup;
+            existing.optionsPage = entry.optionsPage;
             existing.icon = entry.icon;
         } else {
             this.registry.push({
@@ -233,6 +245,7 @@ export class ExtensionManager {
                 version: entry.version,
                 description: entry.description,
                 popup: entry.popup,
+                optionsPage: entry.optionsPage,
                 icon: entry.icon
             });
         }
@@ -275,6 +288,16 @@ export class ExtensionManager {
             popup = popup.slice(1);
         }
 
+        let optionsPage = '';
+        if (manifest.options_ui && manifest.options_ui.page) {
+            optionsPage = manifest.options_ui.page;
+        } else if (manifest.options_page) {
+            optionsPage = manifest.options_page;
+        }
+        if (optionsPage.startsWith('/')) {
+            optionsPage = optionsPage.slice(1);
+        }
+
         const entry = {
             id: ext.id,
             name: name,
@@ -283,6 +306,7 @@ export class ExtensionManager {
             path: extPath,
             enabled: true,
             popup: popup,
+            optionsPage: optionsPage,
             icon: icon,
             manifest: manifest,
             extension: ext
@@ -297,6 +321,7 @@ export class ExtensionManager {
             version: entry.version,
             description: description,
             popup: popup,
+            optionsPage: optionsPage,
             icon: icon
         });
         this._saveRegistry();
@@ -443,7 +468,8 @@ export class ExtensionManager {
                 description: registryEntry.description || '',
                 enabled: registryEntry.enabled === true,
                 icon: registryEntry.icon || '',
-                hasPopup: hasPopup
+                hasPopup: hasPopup,
+                optionsPage: registryEntry.optionsPage || ''
             });
         }
         return result;
@@ -455,5 +481,15 @@ export class ExtensionManager {
             return '';
         }
         return entry.popup || '';
+    }
+
+    getOptionsPage(extId) {
+        const registryEntry = this.registry.find((item) => {
+            return item.id === extId;
+        });
+        if (!registryEntry) {
+            return '';
+        }
+        return registryEntry.optionsPage || '';
     }
 }

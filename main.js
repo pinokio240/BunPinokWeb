@@ -540,6 +540,18 @@ function setupIpcHandlers() {
         return { success: true };
     });
 
+    ipcMain.handle('extensions:openOptions', (_event, extId) => {
+        const optionsPage = extensionManager.getOptionsPage(extId);
+        if (!optionsPage) {
+            return { success: false, error: 'У расширения нет страницы настроек' };
+        }
+        const url = 'chrome-extension://' + extId + '/' + optionsPage;
+        tabManager.createTab(url);
+        updateChromeViewBounds();
+        logger.info('extensions', 'Открыты настройки расширения: ' + url);
+        return { success: true, url: url };
+    });
+
     ipcMain.handle('extensions:installFromUrl', async (_event, url, overrideKey) => {
         try {
             logger.info('extensions', 'Установка из магазина: ' + url);
