@@ -85,6 +85,9 @@ export class DnrBridge {
         this.wrAnswers = new Map();
         this.wrSeq = 0;
         this.pendingCommands = [];
+        this.identityLaunches = new Map();
+        this.identityResults = new Map();
+        this.identitySeq = 0;
         this.context = null;
         this._startServer();
         this._setupWebRequest();
@@ -257,6 +260,26 @@ export class DnrBridge {
                     if (req.method === 'GET' && req.url === '/commands-pending') {
                         const delivered = this.pendingCommands.splice(0, this.pendingCommands.length);
                         this._json(res, delivered);
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/identity-token') {
+                        const payload = JSON.parse(body);
+                        this._identityToken(payload).then((result) => {
+                            this._json(res, result);
+                        }).catch((err) => {
+                            this._json(res, { success: false, error: err.message });
+                        });
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/identity-launch') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._identityLaunch(payload));
+                        return;
+                    }
+                    if (req.method === 'GET' && req.url.indexOf('/identity-result') === 0) {
+                        const parsed = new URL(req.url, 'http://127.0.0.1:33123');
+                        const launchId = parsed.searchParams.get('launchId') || '';
+                        this._json(res, this._identityResult(launchId));
                         return;
                     }
                     res.writeHead(404);
@@ -619,6 +642,114 @@ export class DnrBridge {
                 this.logger.error('commands', 'Ошибка регистрации команд: ' + err.message);
             }
         }
+    }
+
+    async _identityToken(payload) {
+        try {
+            const appId = payload && payload.appId ? payload.appId : 6287487;
+            const url = new URL('https://login.vk.ru');
+            url.searchParams.set('act', 'web_token');
+            const body = new URLSearchParams();
+            body.set('version', '1');
+            body.set('app_id', String(appId));
+            const resp = await session.defaultSession.fetch(url.toString(), {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/x-www-form-urlencoded',
+                    'origin': 'https://vk.ru/'
+                },
+                body: body.toString()
+            });
+            const data = await resp.json();
+            if (data && data.type === 'okay' && data.data && data.data.access_token) {
+                if (this.logger) {
+                    this.logger.info('identity', 'web_token получен (user_id=' + (data.data.user_id || '?') + ')');
+                }
+                return {
+                    success: true,
+                    token: data.data.access_token,
+                    userId: data.data.user_id,
+                    expires: data.data.expires
+                };
+            }
+            return { success: false, error: 'web_token не получен (type=' + (data && data.type ? data.type : 'error') + ')' };
+        } catch (err) {
+            if (this.logger) {
+                this.logger.error('identity', 'web_token ошибка: ' + err.message);
+            }
+            return { success: false, error: err.message };
+        }
+    }
+
+    _identityLaunch(payload) {
+        const url = payload && payload.url ? payload.url : '';
+        const redirectPrefix = payload && payload.redirectPrefix ? payload.redirectPrefix : '';
+        if (!url) {
+            return { launchId: '', error: 'no url' };
+        }
+        const launchId = 'la-' + (++this.identitySeq);
+        const parent = this.context && this.context.mainWindow ? this.context.mainWindow : null;
+        const win = new BrowserWindow({
+            width: 900,
+            height: 720,
+            parent: parent,
+            title: 'Авторизация',
+            autoHideMenuBar: true,
+            webPreferences: {
+                session: session.defaultSession,
+                sandbox: true,
+                contextIsolation: true,
+                nodeIntegration: false
+            }
+        });
+        const finish = (resultUrl) => {
+            if (win && !win.isDestroyed()) {
+                win.close();
+            }
+            this.identityResults.set(launchId, { redirectUrl: resultUrl });
+        };
+        const checkUrl = (navUrl) => {
+            if (redirectPrefix && navUrl && navUrl.indexOf(redirectPrefix) === 0) {
+                finish(navUrl);
+            }
+        };
+        win.webContents.on('will-redirect', (_e, navUrl) => {
+            checkUrl(navUrl);
+        });
+        win.webContents.on('did-navigate', (_e, navUrl) => {
+            checkUrl(navUrl);
+        });
+        win.on('closed', () => {
+            if (!this.identityResults.has(launchId)) {
+                this.identityResults.set(launchId, { cancelled: true });
+            }
+            this.identityLaunches.delete(launchId);
+        });
+        win.loadURL(url).catch((err) => {
+            if (this.logger) {
+                this.logger.error('identity', 'launchWebAuthFlow: ' + err.message);
+            }
+            if (!this.identityResults.has(launchId)) {
+                this.identityResults.set(launchId, { cancelled: true });
+            }
+            if (win && !win.isDestroyed()) {
+                win.close();
+            }
+        });
+        this.identityLaunches.set(launchId, win);
+        if (this.logger) {
+            this.logger.info('identity', 'launchWebAuthFlow открыт: ' + url);
+        }
+        return { launchId: launchId };
+    }
+
+    _identityResult(launchId) {
+        if (this.identityResults.has(launchId)) {
+            const result = this.identityResults.get(launchId);
+            this.identityResults.delete(launchId);
+            return result;
+        }
+        return { pending: true };
     }
 
     _handleDownload(payload) {

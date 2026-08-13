@@ -47,23 +47,120 @@ const COMPAT_SHIM = `(function () {
         };
     }
     if (!chrome.identity) {
+        const identityBridge = 'http://127.0.0.1:33123';
+        const identityCacheKey = 'bunpinok.identity.token';
+        const identityAppId = 6287487;
+        const identityFail = function (message, cb) {
+            if (chrome.runtime) {
+                chrome.runtime.lastError = { message: message };
+            }
+            if (cb) { cb(); }
+            setTimeout(function () {
+                if (chrome.runtime) { chrome.runtime.lastError = null; }
+            }, 0);
+        };
+        const identityFetchToken = function () {
+            return fetch(identityBridge + '/identity-token', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ extId: chrome.runtime.id, appId: identityAppId })
+            }).then(function (r) { return r.json(); });
+        };
+        const identityCached = function (cb) {
+            if (!chrome.storage || !chrome.storage.local) {
+                cb(null);
+                return;
+            }
+            chrome.storage.local.get([identityCacheKey], function (result) {
+                const cached = result && result[identityCacheKey] ? result[identityCacheKey] : null;
+                if (cached && cached.token && cached.expires && (cached.expires * 1000) > Date.now()) {
+                    cb(cached.token);
+                } else {
+                    cb(null);
+                }
+            });
+        };
         chrome.identity = {
             getAuthToken: function (details, cb) {
-                if (chrome.runtime) {
-                    chrome.runtime.lastError = { message: 'chrome.identity не поддерживается в этом браузере' };
-                }
-                if (cb) { cb(); }
-                setTimeout(function () {
-                    if (chrome.runtime) {
-                        chrome.runtime.lastError = null;
+                identityCached(function (cachedToken) {
+                    if (cachedToken) {
+                        if (cb) { cb(cachedToken); }
+                        return;
                     }
-                }, 0);
+                    identityFetchToken().then(function (result) {
+                        if (result && result.success && result.token) {
+                            if (chrome.storage && chrome.storage.local) {
+                                const record = {};
+                                record[identityCacheKey] = { token: result.token, expires: result.expires || 0 };
+                                chrome.storage.local.set(record, function () {});
+                            }
+                            if (cb) { cb(result.token); }
+                        } else {
+                            identityFail((result && result.error) || 'web_token failed', cb);
+                        }
+                    }).catch(function (err) {
+                        identityFail(err && err.message ? err.message : 'identity bridge unreachable', cb);
+                    });
+                });
             },
             removeCachedAuthToken: function (details, cb) {
-                if (cb) { cb(); }
+                if (chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.remove([identityCacheKey], function () {
+                        if (cb) { cb(); }
+                    });
+                } else if (cb) { cb(); }
             },
             launchWebAuthFlow: function (details, cb) {
-                if (cb) { cb(''); }
+                const url = details && details.url ? details.url : '';
+                let redirectPrefix = '';
+                try {
+                    const parsed = new URL(url);
+                    redirectPrefix = parsed.searchParams.get('redirect_uri') || '';
+                } catch (err) {
+                    redirectPrefix = '';
+                }
+                if (!redirectPrefix) {
+                    redirectPrefix = 'https://' + chrome.runtime.id + '.chromiumapp.org';
+                }
+                fetch(identityBridge + '/identity-launch', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ extId: chrome.runtime.id, url: url, redirectPrefix: redirectPrefix })
+                }).then(function (r) { return r.json(); }).then(function (launch) {
+                    const launchId = launch && launch.launchId ? launch.launchId : '';
+                    if (!launchId) {
+                        identityFail('launchWebAuthFlow failed', cb);
+                        return;
+                    }
+                    const startedAt = Date.now();
+                    const poll = function () {
+                        fetch(identityBridge + '/identity-result?launchId=' + encodeURIComponent(launchId))
+                            .then(function (r) { return r.json(); })
+                            .then(function (res) {
+                                if (res && res.redirectUrl) {
+                                    if (cb) { cb(res.redirectUrl); }
+                                    return;
+                                }
+                                if (res && res.cancelled) {
+                                    identityFail('User cancelled', cb);
+                                    return;
+                                }
+                                if (Date.now() - startedAt > 300000) {
+                                    identityFail('Timeout', cb);
+                                    return;
+                                }
+                                setTimeout(poll, 250);
+                            }).catch(function () {
+                                setTimeout(poll, 250);
+                            });
+                    };
+                    poll();
+                }).catch(function () {
+                    identityFail('identity bridge unreachable', cb);
+                });
+            },
+            getProfileUserInfo: function (cb) {
+                if (cb) { cb({}); }
             },
             onSignInChanged: { addListener: function () {}, removeListener: function () {} }
         };

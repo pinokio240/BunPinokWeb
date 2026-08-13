@@ -1211,6 +1211,7 @@ app.whenReady().then(async () => {
         bookmarkStore: bookmarkStore,
         historyStore: historyStore,
         tabManager: tabManager,
+        mainWindow: mainWindow,
         broadcastBookmarks: () => {
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll());
