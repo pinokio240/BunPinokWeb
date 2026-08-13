@@ -1,4 +1,4 @@
-import { WebContentsView, Menu, clipboard } from 'electron';
+import { WebContentsView, Menu, clipboard, BrowserWindow } from 'electron';
 
 let nextTabId = 1;
 
@@ -551,9 +551,24 @@ export class TabManager {
                 }
             }
         };
+        const showDevToolsWindow = () => {
+            try {
+                const dt = wc.devToolsWebContents;
+                if (dt && !dt.isDestroyed()) {
+                    const dtWin = BrowserWindow.fromWebContents(dt);
+                    if (dtWin && !dtWin.isDestroyed()) {
+                        dtWin.show();
+                        dtWin.focus();
+                    }
+                }
+            } catch (err) {
+                // окно DevTools недоступно — пропускаем
+            }
+        };
         if (!wc.isDevToolsOpened()) {
             wc.once('devtools-opened', () => {
-                setTimeout(doInspect, 300);
+                showDevToolsWindow();
+                setTimeout(doInspect, 800);
             });
             try {
                 wc.openDevTools({ mode: 'detach', activate: true });
@@ -562,8 +577,12 @@ export class TabManager {
                     this.logger.error('devtools', 'Не удалось открыть DevTools: ' + err.message);
                 }
             }
-            fallbackTimer = setTimeout(doInspect, 2500);
+            fallbackTimer = setTimeout(() => {
+                showDevToolsWindow();
+                doInspect();
+            }, 3000);
         } else {
+            showDevToolsWindow();
             doInspect();
         }
     }
