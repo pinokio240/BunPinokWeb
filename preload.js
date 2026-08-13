@@ -132,5 +132,11 @@ contextBridge.exposeInMainWorld('browserAPI', {
         getAll: () => ipcRenderer.invoke('sitePermissions:getAll'),
         set: (host, permission, value) => ipcRenderer.invoke('sitePermissions:set', host, permission, value),
         remove: (host, permission) => ipcRenderer.invoke('sitePermissions:remove', host, permission)
+    },
+
+    reader: {
+        open: (tabId) => ipcRenderer.invoke('reader:open', tabId),
+        openActive: () => ipcRenderer.invoke('reader:openActive'),
+        getContent: () => ipcRenderer.invoke('reader:getContent')
     }
 });

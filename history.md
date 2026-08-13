@@ -1,5 +1,13 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.5.3 — Reader Mode (Режим чтения)
+
+### Completed
+- [x] Извлечение статьи: article/main/[role=main] с вычисткой скриптов/рекламы/навигации
+- [x] browser://reader: чистый вид, шрифт А+/А−, тёмная тема, кнопка «Назад»
+- [x] Запуск: ⋮ меню «Режим чтения» + контекстное меню страницы
+- [x] IPC: reader:open/openActive/getContent (+ findTabByWebContents)
+
 ## 2026-08-13 — v0.5.2 — Autofill (Автозаполнение форм)
 
 ### Completed

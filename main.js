@@ -49,6 +49,35 @@ let crxInstaller = null;
 let xpiConverter = null;
 let sessionStore = null;
 let bookmarksBarVisible = false;
+const readerContent = new Map();
+
+function openReader(tabId) {
+    const tab = tabManager.getTab(tabId);
+    if (!tab) {
+        return;
+    }
+    if (tab.url.startsWith('browser://')) {
+        return;
+    }
+    const extractScript = `(() => {
+        const title = document.title;
+        const candidates = document.querySelectorAll('article, main, [role="main"], .content, .article, .post, #content');
+        let container = document.body;
+        if (candidates.length > 0) {
+            container = candidates[0];
+        }
+        const clone = container.cloneNode(true);
+        clone.querySelectorAll('script, style, link, iframe, nav, header, footer, aside, form, button, .ad, .ads, .advert, [class*="advert"], [class*="banner"], [class*="cookie"]').forEach((el) => { el.remove(); });
+        return { title: title, html: clone.innerHTML, url: location.href };
+    })()`;
+    tab.view.webContents.executeJavaScript(extractScript).then((content) => {
+        if (!content || !content.html) {
+            return;
+        }
+        readerContent.set(tabId, content);
+        tabManager.navigateTab(tabId, 'browser://reader');
+    }).catch(() => {});
+}
 
 app.commandLine.appendSwitch('lang', 'ru-RU');
 
@@ -112,7 +141,8 @@ function setupProtocolHandler() {
             'bookmarks': 'pages/bookmarks.html',
             'privacy': 'pages/privacy.html',
             'passwords': 'pages/passwords.html',
-            'about': 'pages/about.html'
+            'about': 'pages/about.html',
+            'reader': 'pages/reader.html'
         };
 
         const filePath = pageMap[pageName];
@@ -543,6 +573,7 @@ function setupIpcHandlers() {
             { label: 'Закладки', accelerator: 'Ctrl+Shift+O', click: () => { tabManager.createTab('browser://bookmarks'); updateChromeViewBounds(); } },
             { label: 'Добавить в закладки', accelerator: 'Ctrl+D', click: () => { const t = tabManager.getActiveTab(); if (t) { bookmarkStore.add(t.url, t.title); mainWindow.webContents.send('bookmarks:updated', bookmarkStore.getAll()); } } },
             { label: 'Перевести страницу', click: () => { translateActiveTab(); } },
+            { label: 'Режим чтения', click: () => { const t = tabManager.getActiveTab(); if (t) { openReader(t.id); } } },
             { label: 'Картинка в картинке (PiP)', click: () => { const t = tabManager.getActiveTab(); if (t) { pipManager.openPip(t.id, tabManager); } } },
             { label: 'Пароли', click: () => { tabManager.createTab('browser://passwords'); updateChromeViewBounds(); } },
             { label: 'Настройки', click: () => { tabManager.createTab('browser://settings'); updateChromeViewBounds(); } },
@@ -757,6 +788,31 @@ function setupIpcHandlers() {
         }
         settingsStore.set('privacy.sitePermissions', copy);
         return { success: true, all: copy };
+    });
+
+    ipcMain.handle('reader:open', (_event, tabId) => {
+        openReader(tabId);
+        return { success: true };
+    });
+
+    ipcMain.handle('reader:openActive', () => {
+        const tab = tabManager.getActiveTab();
+        if (tab) {
+            openReader(tab.id);
+        }
+        return { success: true };
+    });
+
+    ipcMain.handle('reader:getContent', (event) => {
+        const tab = tabManager.findTabByWebContents(event.sender);
+        if (!tab) {
+            return null;
+        }
+        const content = readerContent.get(tab.id);
+        if (content) {
+            readerContent.delete(tab.id);
+        }
+        return content || null;
     });
 }
 
@@ -981,6 +1037,9 @@ app.whenReady().then(async () => {
     tabManager = new TabManager(mainWindow, chromeViewOptions);
     tabManager.setHistoryStore(historyStore);
     tabManager.setSettingsStore(settingsStore);
+    tabManager.setReaderHandler((tabId) => {
+        openReader(tabId);
+    });
     extensionManager = new ExtensionManager(tabManager);
     crxInstaller = new CrxInstaller(extensionManager);
     xpiConverter = new XpiConverter();

@@ -21,9 +21,14 @@ export class TabManager {
         this.activeTabId = null;
         this.historyStore = null;
         this.settingsStore = null;
+        this.readerHandler = null;
         this.pageZoomFactor = 1.0;
         this.defaultFontSize = 16;
         this._setupAutoUpdate();
+    }
+
+    setReaderHandler(handler) {
+        this.readerHandler = handler;
     }
 
     setHistoryStore(historyStore) {
@@ -268,6 +273,7 @@ export class TabManager {
             template.push({ label: 'Вперёд', click: () => tab.view.webContents.navigationHistory.goForward() });
         }
         template.push({ label: 'Обновить', click: () => tab.view.webContents.reload() });
+        template.push({ label: 'Режим чтения', click: () => { if (this.readerHandler) { this.readerHandler(tab.id); } } });
 
         if (params.isEditable) {
             template.push({ type: 'separator' });
@@ -424,6 +430,15 @@ export class TabManager {
 
     getTab(tabId) {
         return this.tabs.get(tabId);
+    }
+
+    findTabByWebContents(webContents) {
+        for (const tab of this.tabs.values()) {
+            if (tab.view.webContents === webContents) {
+                return tab;
+            }
+        }
+        return null;
     }
 
     getActiveTab() {
