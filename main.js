@@ -1137,6 +1137,7 @@ app.whenReady().then(async () => {
         openReader(tabId);
     });
     extensionManager = new ExtensionManager(tabManager);
+    extensionManager.setLogger(logger);
     xpiConverter = new XpiConverter();
     crxInstaller = new CrxInstaller(extensionManager, xpiConverter);
 
@@ -1288,6 +1289,17 @@ app.whenReady().then(async () => {
             title: t.title,
             isLoading: t.isLoading
         })));
+    });
+
+    mainWindow.webContents.on('console-message', (_event, level, message, _line, sourceId) => {
+        if (!logger) {
+            return;
+        }
+        const text = String(message || '');
+        if (text.includes('Electron Security Warning') || text.includes('Insecure Content-Security-Policy')) {
+            return;
+        }
+        logger.log(level >= 2 ? 'error' : 'info', 'chrome-ui:' + sourceId, text);
     });
 
     mainWindow.webContents.on('context-menu', (_event, params) => {

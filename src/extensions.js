@@ -90,8 +90,13 @@ export class ExtensionManager {
     constructor(tabManager) {
         this.tabManager = tabManager;
         this.extensions = new Map();
+        this.logger = null;
         this._loadRegistry();
         this._restoreEnabled();
+    }
+
+    setLogger(logger) {
+        this.logger = logger;
     }
 
     _registryPath() {
@@ -129,11 +134,24 @@ export class ExtensionManager {
     }
 
     _restoreEnabled() {
+        if (this.logger) {
+            this.logger.info('extensions', 'Восстановление расширений из реестра: ' + this.registry.length + ' записей');
+        }
         for (const entry of this.registry) {
             if (entry.enabled && entry.path && fs.existsSync(entry.path)) {
-                this._loadFromPath(entry.path, entry).catch((err) => {
-                    console.error('Не удалось восстановить расширение:', entry.path, err);
+                this._loadFromPath(entry.path, entry).then((extId) => {
+                    if (this.logger) {
+                        this.logger.info('extensions', 'Восстановлено: ' + entry.name + ' (id=' + extId + ')');
+                    }
+                }).catch((err) => {
+                    if (this.logger) {
+                        this.logger.error('extensions', 'Не удалось восстановить ' + entry.path + ': ' + err.message);
+                    }
                 });
+            } else if (entry.enabled) {
+                if (this.logger) {
+                    this.logger.warn('extensions', 'Пропущено (нет папки или выключено): ' + entry.name);
+                }
             }
         }
     }
