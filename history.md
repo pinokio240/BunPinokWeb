@@ -1,5 +1,16 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.5 — XPI Converter: Preserve Own Polyfill
+
+### Из исходников Firefox
+- Mozilla webextension-polyfill (browser-polyfill.js в XPI) РАБОТАЕТ и в Chrome
+- Наш конвертер перезаписывал его своим минимальным полифиллом → ошибки TDZ у Privacy Badger
+- Фикс: если в XPI есть свой browser-polyfill.js — не трогаем и не инжектим свой
+
+### Напоминание
+- Лог пользователя был со старой сессии (до фиксов 2aa23f1) — нужен свежий тест
+- Для применения: переустановить расширения (у старых инсталляций файлы уже перезаписаны)
+
 ## 2026-08-13 — v0.6.4 — Polyfill TDZ Fix + CRX Public Key
 
 ### Privacy Badger (из логов)

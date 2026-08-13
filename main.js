@@ -1139,6 +1139,7 @@ app.whenReady().then(async () => {
     extensionManager = new ExtensionManager(tabManager);
     extensionManager.setLogger(logger);
     xpiConverter = new XpiConverter();
+    xpiConverter.setLogger(logger);
     crxInstaller = new CrxInstaller(extensionManager, xpiConverter);
 
     chromeExtensions = new ElectronChromeExtensions({

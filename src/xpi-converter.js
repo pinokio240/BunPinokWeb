@@ -168,6 +168,14 @@ const UNSUPPORTED_PERMISSIONS = [
 ];
 
 export class XpiConverter {
+    constructor() {
+        this.logger = null;
+    }
+
+    setLogger(logger) {
+        this.logger = logger;
+    }
+
     _unzip(zipBuffer, targetDir) {
         const zip = new AdmZip(zipBuffer);
         if (fs.existsSync(targetDir)) {
@@ -220,41 +228,49 @@ export class XpiConverter {
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
         this._transformManifest(manifest);
 
-        fs.writeFileSync(path.join(targetDir, 'browser-polyfill.js'), POLYFILL, 'utf-8');
+        const hasOwnPolyfill = fs.existsSync(path.join(targetDir, 'browser-polyfill.js'));
 
-        if (manifest.background) {
-            if (Array.isArray(manifest.background.scripts)) {
-                if (!manifest.background.scripts.includes('browser-polyfill.js')) {
-                    manifest.background.scripts.unshift('browser-polyfill.js');
-                }
-            } else if (typeof manifest.background.service_worker === 'string') {
-                const workerName = manifest.background.service_worker;
-                const workerPath = path.join(targetDir, workerName);
-                if (fs.existsSync(workerPath)) {
-                    const wrapperName = 'bunpinok-web-worker.js';
-                    fs.writeFileSync(
-                        path.join(targetDir, wrapperName),
-                        "importScripts('browser-polyfill.js');\nimportScripts('" + workerName + "');\n",
-                        'utf-8'
-                    );
-                    manifest.background.service_worker = wrapperName;
-                }
-            }
-        }
+        if (!hasOwnPolyfill) {
+            fs.writeFileSync(path.join(targetDir, 'browser-polyfill.js'), POLYFILL, 'utf-8');
 
-        if (Array.isArray(manifest.content_scripts)) {
-            for (const contentScript of manifest.content_scripts) {
-                if (Array.isArray(contentScript.js)) {
-                    if (!contentScript.js.includes('browser-polyfill.js')) {
-                        contentScript.js.unshift('browser-polyfill.js');
+            if (manifest.background) {
+                if (Array.isArray(manifest.background.scripts)) {
+                    if (!manifest.background.scripts.includes('browser-polyfill.js')) {
+                        manifest.background.scripts.unshift('browser-polyfill.js');
+                    }
+                } else if (typeof manifest.background.service_worker === 'string') {
+                    const workerName = manifest.background.service_worker;
+                    const workerPath = path.join(targetDir, workerName);
+                    if (fs.existsSync(workerPath)) {
+                        const wrapperName = 'bunpinok-web-worker.js';
+                        fs.writeFileSync(
+                            path.join(targetDir, wrapperName),
+                            "importScripts('browser-polyfill.js');\nimportScripts('" + workerName + "');\n",
+                            'utf-8'
+                        );
+                        manifest.background.service_worker = wrapperName;
                     }
                 }
             }
-        }
 
-        const htmlFiles = this._findHtmlFiles(targetDir);
-        for (const htmlFile of htmlFiles) {
-            this._injectPolyfillIntoHtml(htmlFile);
+            if (Array.isArray(manifest.content_scripts)) {
+                for (const contentScript of manifest.content_scripts) {
+                    if (Array.isArray(contentScript.js)) {
+                        if (!contentScript.js.includes('browser-polyfill.js')) {
+                            contentScript.js.unshift('browser-polyfill.js');
+                        }
+                    }
+                }
+            }
+
+            const htmlFiles = this._findHtmlFiles(targetDir);
+            for (const htmlFile of htmlFiles) {
+                this._injectPolyfillIntoHtml(htmlFile);
+            }
+        } else {
+            if (this.logger) {
+                this.logger.info('xpi', 'Расширение имеет собственный browser-polyfill.js — используем его');
+            }
         }
 
         fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
