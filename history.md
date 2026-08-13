@@ -1,5 +1,18 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.1 — electron-chrome-extensions (GPL-3.0)
+
+### Решение
+- Переход на библиотеку electron-chrome-extensions v4.9.0 (полные chrome.tabs/windows/runtime/action/storage API)
+- Лицензия проекта: LGPL-2.1 → **GPL-3.0** (требование библиотеки), LICENSE обновлён
+
+### Integration
+- [x] ElectronChromeExtensions: createTab/selectTab/removeTab/createWindow завязаны на TabManager
+- [x] tabs.js: addTab при создании, removeTab при закрытии, selectTab при переключении
+- [x] handleCRXProtocol(session.defaultSession) — иконки расширений
+- [x] Попапы: preload chrome-extension-api.preload.js (полный chrome.* API в попапе)
+- [x] Наши стабы (compat-shim) не конфликтуют — заполняют только отсутствующие API (identity, DNR-мост остаётся)
+
 ## 2026-08-13 — v0.6.0 — PinokWeb Borrows: Privacy Shield + Shortcuts + WindowState
 
 ### Позаимствовано из C:\Users\Pinokio240\Desktop\PinokWeb

@@ -22,9 +22,14 @@ export class TabManager {
         this.historyStore = null;
         this.settingsStore = null;
         this.readerHandler = null;
+        this.chromeExtensions = null;
         this.pageZoomFactor = 1.0;
         this.defaultFontSize = 16;
         this._setupAutoUpdate();
+    }
+
+    setChromeExtensions(instance) {
+        this.chromeExtensions = instance;
     }
 
     setReaderHandler(handler) {
@@ -146,6 +151,13 @@ export class TabManager {
         });
 
         this.mainWindow.contentView.addChildView(view);
+        if (this.chromeExtensions) {
+            try {
+                this.chromeExtensions.addTab(view.webContents, this.mainWindow);
+            } catch (err) {
+                console.error('Не удалось зарегистрировать вкладку в chrome-extensions:', err);
+            }
+        }
         this.selectTab(id);
 
         if (url && url !== 'browser://newtab') {
@@ -396,6 +408,14 @@ export class TabManager {
         const tab = this.tabs.get(tabId);
         if (!tab) return;
 
+        if (this.chromeExtensions) {
+            try {
+                this.chromeExtensions.removeTab(tab.view.webContents);
+            } catch (err) {
+                console.error('Не удалось снять вкладку с chrome-extensions:', err);
+            }
+        }
+
         this.mainWindow.contentView.removeChildView(tab.view);
         tab.view.webContents.close();
         this.tabs.delete(tabId);
@@ -428,6 +448,13 @@ export class TabManager {
         tab.view.setVisible(true);
         tab.isSelected = true;
         this.activeTabId = tabId;
+        if (this.chromeExtensions) {
+            try {
+                this.chromeExtensions.selectTab(tab.view.webContents);
+            } catch (err) {
+                console.error('Не удалось выбрать вкладку в chrome-extensions:', err);
+            }
+        }
         this._notifyUpdate();
     }
 

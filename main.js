@@ -33,6 +33,7 @@ import { XpiConverter } from './src/xpi-converter.js';
 import { SessionStore } from './src/session-store.js';
 import { DnrBridge } from './src/dnr-bridge.js';
 import { PrivacyShield } from './src/privacy-shield.js';
+import { ElectronChromeExtensions } from 'electron-chrome-extensions';
 
 let mainWindow = null;
 let chromeView = null;
@@ -52,6 +53,7 @@ let xpiConverter = null;
 let sessionStore = null;
 let dnrBridge = null;
 let privacyShield = null;
+let chromeExtensions = null;
 let bookmarksBarVisible = false;
 const readerContent = new Map();
 
@@ -947,6 +949,7 @@ function openExtensionPopup(extId, popupPath, x, y) {
         y: Math.round(y),
         webPreferences: {
             session: session.defaultSession,
+            preload: path.join(__dirname, 'node_modules', 'electron-chrome-extensions', 'dist', 'chrome-extension-api.preload.js'),
             sandbox: true,
             nodeIntegration: false,
             nodeIntegrationInWorker: false,
@@ -1100,6 +1103,48 @@ app.whenReady().then(async () => {
     extensionManager = new ExtensionManager(tabManager);
     crxInstaller = new CrxInstaller(extensionManager);
     xpiConverter = new XpiConverter();
+
+    chromeExtensions = new ElectronChromeExtensions({
+        license: 'GPL-3.0',
+        session: session.defaultSession,
+        createTab: async (details) => {
+            const url = details.url || 'about:blank';
+            const tabId = tabManager.createTab(url);
+            updateChromeViewBounds();
+            const tab = tabManager.getTab(tabId);
+            if (tab) {
+                return [tab.view.webContents, mainWindow];
+            }
+            return [mainWindow.webContents, mainWindow];
+        },
+        selectTab: (tab, _browserWindow) => {
+            const found = tabManager.findTabByWebContents(tab);
+            if (found) {
+                tabManager.selectTab(found.id);
+                updateChromeViewBounds();
+            }
+        },
+        removeTab: (tab, _browserWindow) => {
+            const found = tabManager.findTabByWebContents(tab);
+            if (found) {
+                tabManager.closeTab(found.id);
+                updateChromeViewBounds();
+                if (tabManager.getTabCount() === 0) {
+                    tabManager.createTab('browser://newtab');
+                    updateChromeViewBounds();
+                }
+            }
+        },
+        createWindow: async (details) => {
+            const url = details.url || 'about:blank';
+            tabManager.createTab(url);
+            updateChromeViewBounds();
+            return mainWindow;
+        }
+    });
+    tabManager.setChromeExtensions(chromeExtensions);
+    ElectronChromeExtensions.handleCRXProtocol(session.defaultSession);
+    console.log('[ElectronChromeExtensions] инициализированы');
 
     const menuTemplate = [
         {
