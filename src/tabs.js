@@ -605,6 +605,15 @@ export class TabManager {
                 this._closeDevToolsForTab(tab);
             }
         });
+        this._applyDevToolsBounds();
+        wc.once('devtools-opened', () => {
+            setTimeout(() => {
+                if (this.devToolsView && !this.devToolsView.webContents.isDestroyed()) {
+                    this.devToolsView.webContents.invalidate();
+                }
+                this._applyDevToolsBounds();
+            }, 600);
+        });
         try {
             if (this.devToolsView) {
                 wc.setDevToolsWebContents(this.devToolsView.webContents);
@@ -616,7 +625,6 @@ export class TabManager {
                 this.logger.error('devtools', 'Не удалось открыть DevTools: ' + err.message);
             }
         }
-        this._applyDevToolsBounds();
     }
 
     _closeDevToolsForTab(tab) {
