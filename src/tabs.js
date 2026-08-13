@@ -1,5 +1,111 @@
 import { WebContentsView, Menu, clipboard } from 'electron';
 
+const FS_POLYFILL = `(() => {
+    if (window.__bunpinokFsPolyfill) return;
+    window.__bunpinokFsPolyfill = true;
+    const bridge = 'http://127.0.0.1:33123';
+    const post = (url, payload) => fetch(bridge + url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload || {})
+    }).then((r) => r.json());
+    const toBytes = async (chunk) => {
+        if (chunk instanceof ArrayBuffer) return new Uint8Array(chunk);
+        if (ArrayBuffer.isView(chunk)) return new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+        if (chunk instanceof Blob) return new Uint8Array(await chunk.arrayBuffer());
+        if (typeof chunk === 'string') return new TextEncoder().encode(chunk);
+        return new Uint8Array(0);
+    };
+    const bytesToBase64 = (bytes) => {
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, bytes.length)));
+        }
+        return btoa(binary);
+    };
+    class FsWritable {
+        constructor(dir, name) {
+            this.dir = dir;
+            this.name = name;
+            this.chunks = [];
+            this.closed = false;
+            const self = this;
+            this.ws = new WritableStream({
+                write(chunk) { self.chunks.push(chunk); return Promise.resolve(); },
+                close() { return self._finalize(); },
+                abort() { self.closed = true; return Promise.resolve(); }
+            });
+        }
+        async _finalize() {
+            const all = [];
+            for (const chunk of this.chunks) {
+                const bytes = await toBytes(chunk);
+                for (const b of bytes) all.push(b);
+            }
+            const data = bytesToBase64(Uint8Array.from(all));
+            const result = await post('/fs-write', { dir: this.dir, name: this.name, data: data });
+            if (!result || !result.success) {
+                throw new Error((result && result.error) || 'Не удалось сохранить файл');
+            }
+        }
+        async write(data) {
+            if (this.closed) throw new DOMException('Writable is closed', 'InvalidStateError');
+            this.chunks.push(data);
+        }
+        async close() {
+            if (this.closed) return;
+            await this._finalize();
+            this.closed = true;
+        }
+        getWriter() { return this.ws.getWriter(); }
+        abort(reason) { this.closed = true; return this.ws.abort(reason); }
+    }
+    class FsFileHandle {
+        constructor(dir, name) { this.kind = 'file'; this.name = name; this.dir = dir; }
+        createWritable() { return Promise.resolve(new FsWritable(this.dir, this.name)); }
+        async getFile() {
+            const result = await post('/fs-read', { dir: this.dir, name: this.name });
+            if (!result || !result.success) throw new DOMException('Файл не найден', 'NotFoundError');
+            const binary = atob(result.data || '');
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            return new File([bytes], this.name);
+        }
+    }
+    class FsDirHandle {
+        constructor(dir, name) { this.kind = 'directory'; this.name = name; this.dir = dir; }
+        async getFileHandle(name, options) {
+            return new FsFileHandle(this.dir, String(name));
+        }
+        async getDirectoryHandle(name, options) {
+            const sub = String(name);
+            if (options && options.create) {
+                await post('/fs-mkdir', { dir: this.dir, name: sub });
+            }
+            return new FsDirHandle(this.dir + '/' + sub, sub);
+        }
+        async removeEntry(name, options) {
+            await post('/fs-remove', { dir: this.dir, name: String(name) });
+        }
+        async entries() { return []; }
+        async values() { return []; }
+    }
+    window.showDirectoryPicker = async function (options) {
+        const result = await post('/fs-pick', { id: options && options.id, startIn: options && options.startIn });
+        if (!result || result.cancelled) {
+            throw new DOMException('The user aborted a request.', 'AbortError');
+        }
+        return new FsDirHandle(result.path, result.name);
+    };
+    if (!window.showOpenFilePicker) {
+        window.showOpenFilePicker = async function () { throw new DOMException('Not supported', 'NotSupportedError'); };
+    }
+    if (!window.showSaveFilePicker) {
+        window.showSaveFilePicker = async function () { throw new DOMException('Not supported', 'NotSupportedError'); };
+    }
+})();`;
+
 let nextTabId = 1;
 
 class Tab {
@@ -103,6 +209,10 @@ export class TabManager {
             this._notifyUpdate();
             this._maybeAutoTranslate(tab);
             this._maybeInjectStoreBanner(tab);
+        });
+
+        view.webContents.on('did-finish-load', () => {
+            this._injectFsPolyfill(tab);
         });
 
         view.webContents.on('did-navigate', (_event, navUrl) => {
@@ -362,6 +472,14 @@ export class TabManager {
             tryInject();
         })()`;
         tab.view.webContents.executeJavaScript(bannerScript).catch(() => {});
+    }
+
+    _injectFsPolyfill(tab) {
+        try {
+            tab.view.webContents.executeJavaScript(FS_POLYFILL).catch(() => {});
+        } catch (err) {
+            // инъекция не удалась — не критично
+        }
     }
 
     _handleWindowOpen(details) {

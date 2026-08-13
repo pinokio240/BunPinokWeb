@@ -1,7 +1,7 @@
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
-import { app, session, BrowserWindow, screen, globalShortcut, net } from 'electron';
+import { app, session, BrowserWindow, screen, globalShortcut, net, dialog } from 'electron';
 
 const BRIDGE_PORT = 33123;
 
@@ -381,6 +381,36 @@ export class DnrBridge {
                         const area = payload.area || 'local';
                         this._storageSave(extId, area, {});
                         this._json(res, { success: true });
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url.indexOf('/fs-') === 0) {
+                        const origin = req.headers.origin || '';
+                        if (!this._fsOriginAllowed(origin)) {
+                            this._json(res, { success: false, error: 'origin not allowed' });
+                            return;
+                        }
+                        const payload = JSON.parse(body);
+                        if (req.url === '/fs-pick') {
+                            this._json(res, this._fsPick(payload));
+                            return;
+                        }
+                        if (req.url === '/fs-write') {
+                            this._json(res, this._fsWrite(payload));
+                            return;
+                        }
+                        if (req.url === '/fs-read') {
+                            this._json(res, this._fsRead(payload));
+                            return;
+                        }
+                        if (req.url === '/fs-mkdir') {
+                            this._json(res, this._fsMkdir(payload));
+                            return;
+                        }
+                        if (req.url === '/fs-remove') {
+                            this._json(res, this._fsRemove(payload));
+                            return;
+                        }
+                        this._json(res, { success: false, error: 'unknown fs op' });
                         return;
                     }
                     res.writeHead(404);
@@ -950,6 +980,123 @@ export class DnrBridge {
             if (this.logger) {
                 this.logger.error('storage', 'Не удалось сохранить хранилище ' + extId + '.' + area + ': ' + err.message);
             }
+        }
+    }
+
+    _fsOriginAllowed(origin) {
+        if (!origin) {
+            return false;
+        }
+        if (origin.startsWith('chrome-extension://')) {
+            return true;
+        }
+        try {
+            const hostname = new URL(origin).hostname;
+            for (const allowed of ['vk.com', 'vk.ru', 'vknext.net']) {
+                if (hostname === allowed || hostname.endsWith('.' + allowed)) {
+                    return true;
+                }
+            }
+        } catch (err) {
+            return false;
+        }
+        return false;
+    }
+
+    _fsSanitizeName(name) {
+        const base = path.basename(String(name || ''));
+        if (!base || base === '.' || base === '..') {
+            return '';
+        }
+        return base;
+    }
+
+    _fsPick(payload) {
+        try {
+            const win = this.context && this.context.mainWindow ? this.context.mainWindow : null;
+            const options = {
+                title: 'Выберите папку для сохранения',
+                buttonLabel: 'Выбрать папку',
+                properties: ['openDirectory', 'createDirectory']
+            };
+            const result = dialog.showOpenDialogSync(win, options);
+            if (!result || result.length === 0) {
+                return { cancelled: true };
+            }
+            if (this.logger) {
+                this.logger.info('fs', 'Выбрана папка сохранения: ' + result[0]);
+            }
+            return { path: result[0], name: path.basename(result[0]) };
+        } catch (err) {
+            return { cancelled: true };
+        }
+    }
+
+    _fsWrite(payload) {
+        try {
+            const dir = String(payload.dir || '');
+            const name = this._fsSanitizeName(payload.name);
+            if (!dir || !name) {
+                return { success: false, error: 'Некорректный путь' };
+            }
+            if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+                return { success: false, error: 'Папка не существует' };
+            }
+            const buffer = Buffer.from(payload.data || '', 'base64');
+            const target = path.join(dir, name);
+            fs.writeFileSync(target, buffer);
+            if (this.logger) {
+                this.logger.info('fs', 'Файл сохранён: ' + target + ' (' + buffer.length + ' байт)');
+            }
+            return { success: true };
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    }
+
+    _fsRead(payload) {
+        try {
+            const dir = String(payload.dir || '');
+            const name = this._fsSanitizeName(payload.name);
+            const target = path.join(dir, name);
+            if (!dir || !name || !fs.existsSync(target)) {
+                return { success: false, error: 'Файл не найден' };
+            }
+            const buffer = fs.readFileSync(target);
+            return { success: true, data: buffer.toString('base64') };
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    }
+
+    _fsMkdir(payload) {
+        try {
+            const dir = String(payload.dir || '');
+            const name = this._fsSanitizeName(payload.name);
+            if (!dir || !name) {
+                return { success: false, error: 'Некорректный путь' };
+            }
+            fs.mkdirSync(path.join(dir, name), { recursive: true });
+            return { success: true };
+        } catch (err) {
+            return { success: false, error: err.message };
+        }
+    }
+
+    _fsRemove(payload) {
+        try {
+            const dir = String(payload.dir || '');
+            const name = this._fsSanitizeName(payload.name);
+            if (!dir || !name) {
+                return { success: false, error: 'Некорректный путь' };
+            }
+            const target = path.join(dir, name);
+            if (fs.existsSync(target)) {
+                fs.rmSync(target, { recursive: true, force: true });
+            }
+            return { success: true };
+        } catch (err) {
+            return { success: false, error: err.message };
         }
     }
 
