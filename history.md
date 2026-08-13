@@ -1,5 +1,24 @@
 # BunPinokWeb — Project History
 
+## 2026-08-13 — v0.6.11 — Massive Chrome API Implementation
+
+### Реализовано (по карте docs/chrome-api-list.md)
+- [x] chrome.alarms — РЕАЛЬНЫЕ таймеры (delay/period + onAlarm)
+- [x] chrome.bookmarks — getTree/create/remove/search → BookmarkStore
+- [x] chrome.history — search/addUrl/deleteUrl/deleteAll → HistoryStore
+- [x] chrome.browsingData — remove/removeCache/removeCookies/removeHistory
+- [x] chrome.topSites — топ доменов из истории
+- [x] chrome.search.query — открытие поиска во вкладке
+- [x] chrome.sessions — базовый
+- [x] chrome.contentSettings — cookies/javascript/notifications/geolocation/camera/microphone → sitePermissions
+- [x] chrome.proxy — get/set → system.proxyMode + applyProxy
+- [x] chrome.system.display — getInfo → Electron screen
+- [x] chrome.commands — ГЛОБАЛЬНЫЕ хоткеи (globalShortcut + poll + onCommand)
+
+### Архитектура
+- DnrBridge.setContext({bookmarkStore, historyStore, tabManager, broadcast, updateBounds, applyProxy})
+- Единый паттерн: расширение → fetch на 127.0.0.1:33123 → main → store/action
+
 ## 2026-08-13 — v0.6.10 — VK Music Player: Full API Map + Autoplay Fix
 
 ### Study (полный скан 3.3MB JS)

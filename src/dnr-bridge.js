@@ -1,7 +1,7 @@
 import http from 'node:http';
 import path from 'node:path';
 import fs from 'node:fs';
-import { app, session, BrowserWindow } from 'electron';
+import { app, session, BrowserWindow, screen, globalShortcut } from 'electron';
 
 const BRIDGE_PORT = 33123;
 
@@ -84,8 +84,14 @@ export class DnrBridge {
         this.pendingQueries = [];
         this.wrAnswers = new Map();
         this.wrSeq = 0;
+        this.pendingCommands = [];
+        this.context = null;
         this._startServer();
         this._setupWebRequest();
+    }
+
+    setContext(context) {
+        this.context = context;
     }
 
     setLogger(logger) {
@@ -152,6 +158,96 @@ export class DnrBridge {
                         this._json(res, { success: true });
                         return;
                     }
+                    if (req.method === 'POST' && req.url === '/bm-gettree') {
+                        this._json(res, this._bookmarksTree());
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/bm-create') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._bookmarkCreate(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/bm-remove') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._bookmarkRemove(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/bm-search') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._bookmarkSearch(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/hist-search') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._historySearch(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/hist-add') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._historyAdd(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/hist-del') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._historyDelete(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/hist-delall') {
+                        this._json(res, this._historyDeleteAll());
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/browsingdata') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._browsingData(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/topsites') {
+                        this._json(res, this._topSites());
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/search') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._openSearch(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/sysdisplay') {
+                        this._json(res, this._systemDisplay());
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/sessions') {
+                        this._json(res, []);
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/cs-get') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._contentSettingGet(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/cs-set') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._contentSettingSet(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/proxy-get') {
+                        this._json(res, this._proxyGet());
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/proxy-set') {
+                        const payload = JSON.parse(body);
+                        this._json(res, this._proxySet(payload));
+                        return;
+                    }
+                    if (req.method === 'POST' && req.url === '/commands-register') {
+                        const payload = JSON.parse(body);
+                        this._registerCommands(payload);
+                        this._json(res, { success: true });
+                        return;
+                    }
+                    if (req.method === 'GET' && req.url === '/commands-pending') {
+                        const delivered = this.pendingCommands.splice(0, this.pendingCommands.length);
+                        this._json(res, delivered);
+                        return;
+                    }
                     res.writeHead(404);
                     res.end();
                 } catch (err) {
@@ -213,6 +309,305 @@ export class DnrBridge {
             win.close();
         }
         this.offscreenWindows.delete(extId);
+    }
+
+    _bookmarksTree() {
+        const bookmarkStore = this.context && this.context.bookmarkStore ? this.context.bookmarkStore : null;
+        if (!bookmarkStore) {
+            return [{ id: '0', title: '', children: [] }];
+        }
+        const children = bookmarkStore.getAll().map((bookmark, index) => {
+            return { id: 'bm-' + index, title: bookmark.title || bookmark.url, url: bookmark.url };
+        });
+        return [{ id: '0', title: '', children: children }];
+    }
+
+    _bookmarkCreate(payload) {
+        const bookmarkStore = this.context && this.context.bookmarkStore ? this.context.bookmarkStore : null;
+        if (!bookmarkStore) {
+            return {};
+        }
+        const url = payload.url || '';
+        const title = payload.title || url;
+        bookmarkStore.add(url, title);
+        if (this.context && this.context.broadcastBookmarks) {
+            this.context.broadcastBookmarks();
+        }
+        return { id: url, url: url, title: title };
+    }
+
+    _bookmarkRemove(payload) {
+        const bookmarkStore = this.context && this.context.bookmarkStore ? this.context.bookmarkStore : null;
+        if (!bookmarkStore) {
+            return { success: false };
+        }
+        bookmarkStore.removeByUrl(payload.url || payload.id || '');
+        if (this.context && this.context.broadcastBookmarks) {
+            this.context.broadcastBookmarks();
+        }
+        return { success: true };
+    }
+
+    _bookmarkSearch(payload) {
+        const bookmarkStore = this.context && this.context.bookmarkStore ? this.context.bookmarkStore : null;
+        if (!bookmarkStore) {
+            return [];
+        }
+        const query = (payload.query || '').toLowerCase();
+        return bookmarkStore.getAll().filter((bookmark) => {
+            return bookmark.url.toLowerCase().includes(query) || bookmark.title.toLowerCase().includes(query);
+        }).map((bookmark, index) => {
+            return { id: 'bm-' + index, title: bookmark.title || bookmark.url, url: bookmark.url };
+        });
+    }
+
+    _historySearch(payload) {
+        const historyStore = this.context && this.context.historyStore ? this.context.historyStore : null;
+        if (!historyStore) {
+            return [];
+        }
+        const text = payload.text || '';
+        return historyStore.search(text).slice(0, 500).map((entry, index) => {
+            return { id: 'h-' + index, url: entry.url, title: entry.title, lastVisitTime: entry.timestamp };
+        });
+    }
+
+    _historyAdd(payload) {
+        const historyStore = this.context && this.context.historyStore ? this.context.historyStore : null;
+        if (!historyStore) {
+            return { success: false };
+        }
+        historyStore.add(payload.url || '', payload.title || '');
+        return { success: true };
+    }
+
+    _historyDelete(payload) {
+        const historyStore = this.context && this.context.historyStore ? this.context.historyStore : null;
+        if (!historyStore) {
+            return { success: false };
+        }
+        historyStore.removeByUrl(payload.url || '');
+        return { success: true };
+    }
+
+    _historyDeleteAll() {
+        const historyStore = this.context && this.context.historyStore ? this.context.historyStore : null;
+        if (historyStore) {
+            historyStore.clear();
+        }
+        return { success: true };
+    }
+
+    _browsingData(payload) {
+        const options = payload || {};
+        if (options.cookies || options.cache || options.localStorage) {
+            const storages = [];
+            if (options.cookies) {
+                storages.push('cookies');
+            }
+            if (options.localStorage) {
+                storages.push('localstorage');
+            }
+            if (storages.length > 0) {
+                session.defaultSession.clearStorageData({ storages: storages });
+            }
+            if (options.cache) {
+                session.defaultSession.clearCache();
+            }
+        }
+        if (options.history && this.context && this.context.historyStore) {
+            this.context.historyStore.clear();
+        }
+        return { success: true };
+    }
+
+    _topSites() {
+        const historyStore = this.context && this.context.historyStore ? this.context.historyStore : null;
+        if (!historyStore) {
+            return [];
+        }
+        const domainCounts = new Map();
+        for (const entry of historyStore.getAll()) {
+            try {
+                const hostname = new URL(entry.url).hostname;
+                domainCounts.set(hostname, (domainCounts.get(hostname) || 0) + 1);
+            } catch (err) {
+                // пропуск некорректных URL
+            }
+        }
+        const sorted = [...domainCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+        return sorted.map(([hostname]) => {
+            return { title: hostname, url: 'https://' + hostname };
+        });
+    }
+
+    _openSearch(payload) {
+        const tabManager = this.context && this.context.tabManager ? this.context.tabManager : null;
+        if (!tabManager) {
+            return { success: false };
+        }
+        const query = payload.query || '';
+        const engine = this.settingsStore ? this.settingsStore.get('search.engine', 'google') : 'google';
+        const engines = {
+            google: 'https://www.google.com/search?q=',
+            yandex: 'https://yandex.ru/search/?text=',
+            bing: 'https://www.bing.com/search?q=',
+            duckduckgo: 'https://duckduckgo.com/?q='
+        };
+        const base = engines[engine] || engines.google;
+        tabManager.createTab(base + encodeURIComponent(query));
+        if (this.context && this.context.updateBounds) {
+            this.context.updateBounds();
+        }
+        return { success: true };
+    }
+
+    _systemDisplay() {
+        try {
+            return screen.getAllDisplays().map((display, index) => {
+                return {
+                    id: String(index),
+                    name: 'Дисплей ' + (index + 1),
+                    bounds: display.bounds,
+                    workArea: display.workArea,
+                    isPrimary: display.id === screen.getPrimaryDisplay().id
+                };
+            });
+        } catch (err) {
+            return [];
+        }
+    }
+
+    _contentSettingGet(payload) {
+        if (!this.settingsStore) {
+            return { setting: 'allow' };
+        }
+        const type = payload.type || '';
+        const primaryUrl = payload.primaryUrl || '';
+        let host = '';
+        try {
+            host = new URL(primaryUrl).hostname;
+        } catch (err) {
+            host = '';
+        }
+        const permissionMap = {
+            notifications: 'privacy.notifications',
+            geolocation: 'privacy.geolocation',
+            camera: 'privacy.camera',
+            microphone: 'privacy.microphone',
+            javascript: 'javascript',
+            popups: 'privacy.popups',
+            cookies: 'cookies'
+        };
+        const settingKey = permissionMap[type];
+        if (settingKey === 'javascript') {
+            return { setting: 'allow' };
+        }
+        if (settingKey === 'cookies') {
+            return { setting: 'allow' };
+        }
+        if (settingKey && host) {
+            const sitePermissions = this.settingsStore.get('privacy.sitePermissions', {});
+            if (sitePermissions && sitePermissions[host] && typeof sitePermissions[host][type] === 'string') {
+                const value = sitePermissions[host][type];
+                if (value === 'ask') {
+                    return { setting: 'ask' };
+                }
+                return { setting: value === 'allow' ? 'allow' : 'block' };
+            }
+        }
+        if (settingKey) {
+            const value = this.settingsStore.get(settingKey, 'allow');
+            if (value === 'ask') {
+                return { setting: 'ask' };
+            }
+            return { setting: value === 'allow' ? 'allow' : 'block' };
+        }
+        return { setting: 'allow' };
+    }
+
+    _contentSettingSet(payload) {
+        if (!this.settingsStore) {
+            return { success: false };
+        }
+        const type = payload.type || '';
+        const primaryUrl = payload.primaryUrl || '';
+        const value = payload.value || 'allow';
+        let host = '';
+        try {
+            host = new URL(primaryUrl).hostname;
+        } catch (err) {
+            host = '';
+        }
+        if (!host) {
+            return { success: false };
+        }
+        const sitePermissions = this.settingsStore.get('privacy.sitePermissions', {});
+        const copy = {};
+        for (const key of Object.keys(sitePermissions)) {
+            copy[key] = sitePermissions[key];
+        }
+        if (!copy[host]) {
+            copy[host] = {};
+        }
+        copy[host][type] = value === 'block' ? 'block' : 'allow';
+        this.settingsStore.set('privacy.sitePermissions', copy);
+        return { success: true };
+    }
+
+    _proxyGet() {
+        if (!this.settingsStore) {
+            return { value: { mode: 'system' } };
+        }
+        return { value: { mode: this.settingsStore.get('system.proxyMode', 'system') } };
+    }
+
+    _proxySet(payload) {
+        if (!this.settingsStore) {
+            return { success: false };
+        }
+        const value = payload.value || {};
+        const mode = value.mode === 'fixed_servers' || value.mode === 'direct' ? value.mode : 'system';
+        this.settingsStore.set('system.proxyMode', mode);
+        if (this.context && this.context.applyProxy) {
+            this.context.applyProxy();
+        }
+        return { success: true };
+    }
+
+    _registerCommands(payload) {
+        const extId = payload.extId || '';
+        const commands = payload.commands || {};
+        try {
+            for (const name of Object.keys(commands)) {
+                const command = commands[name];
+                if (!command || !command.global) {
+                    continue;
+                }
+                const suggestedKey = command.suggested_key;
+                const accelerator = suggestedKey ? (suggestedKey.default || suggestedKey.windows) : '';
+                if (!accelerator) {
+                    continue;
+                }
+                const accelKey = accelerator.replace(/\s+/g, '');
+                try {
+                    globalShortcut.register(accelKey, () => {
+                        this.pendingCommands.push({ extId: extId, name: name, shortcut: accelerator });
+                    });
+                    if (this.logger) {
+                        this.logger.info('commands', 'Глобальная клавиша зарегистрирована: ' + accelerator + ' (' + name + ')');
+                    }
+                } catch (regErr) {
+                    if (this.logger) {
+                        this.logger.warn('commands', 'Не удалось зарегистрировать ' + accelerator + ': ' + regErr.message);
+                    }
+                }
+            }
+        } catch (err) {
+            if (this.logger) {
+                this.logger.error('commands', 'Ошибка регистрации команд: ' + err.message);
+            }
+        }
     }
 
     _handleDownload(payload) {

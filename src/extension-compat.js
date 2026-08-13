@@ -403,6 +403,257 @@ const COMPAT_SHIM = `(function () {
             SessionStatus: { STARTED: 'started', STOPPED: 'stopped' }
         };
     }
+    if (!chrome.alarms) {
+        const alarmTimers = {};
+        const alarmListeners = [];
+        chrome.alarms = {
+            create: function (name, info) {
+                const key = name || '';
+                const delayMinutes = info && info.delayInMinutes ? info.delayInMinutes : 1;
+                const periodMinutes = info && info.periodInMinutes ? info.periodInMinutes : 0;
+                const delayMs = delayMinutes * 60000;
+                if (alarmTimers[key]) {
+                    clearTimeout(alarmTimers[key]);
+                    clearInterval(alarmTimers[key + ':iv']);
+                }
+                const fire = function () {
+                    for (const listener of alarmListeners) {
+                        try { listener({ name: name || '' }); } catch (err) { }
+                    }
+                };
+                alarmTimers[key] = setTimeout(function () {
+                    fire();
+                    if (periodMinutes > 0) {
+                        alarmTimers[key + ':iv'] = setInterval(fire, periodMinutes * 60000);
+                    }
+                }, delayMs);
+            },
+            clear: function (name, cb) {
+                const key = name || '';
+                if (alarmTimers[key]) { clearTimeout(alarmTimers[key]); delete alarmTimers[key]; }
+                if (alarmTimers[key + ':iv']) { clearInterval(alarmTimers[key + ':iv']); delete alarmTimers[key + ':iv']; }
+                if (cb) { cb(true); }
+            },
+            clearAll: function (cb) {
+                for (const key of Object.keys(alarmTimers)) {
+                    if (String(key).endsWith(':iv')) { clearInterval(alarmTimers[key]); } else { clearTimeout(alarmTimers[key]); }
+                    delete alarmTimers[key];
+                }
+                if (cb) { cb(true); }
+            },
+            get: function (name, cb) { if (cb) { cb(null); } },
+            getAll: function (cb) { if (cb) { cb([]); } },
+            onAlarm: {
+                addListener: function (fn) { alarmListeners.push(fn); },
+                removeListener: function (fn) {
+                    const idx = alarmListeners.indexOf(fn);
+                    if (idx >= 0) { alarmListeners.splice(idx, 1); }
+                },
+                hasListener: function (fn) { return alarmListeners.indexOf(fn) >= 0; }
+            }
+        };
+    }
+    if (!chrome.bookmarks) {
+        chrome.bookmarks = {
+            getTree: function (cb) {
+                fetch('http://127.0.0.1:33123/bm-gettree', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (tree) { if (cb) { cb(tree); } })
+                    .catch(function () { if (cb) { cb([{ id: '0', title: '', children: [] }]); } });
+            },
+            create: function (details, cb) {
+                fetch('http://127.0.0.1:33123/bm-create', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(details || {}) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (node) { if (cb) { cb(node); } })
+                    .catch(function () { if (cb) { cb({}); } });
+            },
+            remove: function (id, cb) {
+                fetch('http://127.0.0.1:33123/bm-remove', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: id }) })
+                    .then(function () { if (cb) { cb(); } })
+                    .catch(function () { if (cb) { cb(); } });
+            },
+            search: function (query, cb) {
+                fetch('http://127.0.0.1:33123/bm-search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query: query }) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (nodes) { if (cb) { cb(nodes); } })
+                    .catch(function () { if (cb) { cb([]); } });
+            },
+            get: function (id, cb) { if (cb) { cb(null); } },
+            update: function (id, changes, cb) { if (cb) { cb({}); } }
+        };
+    }
+    if (!chrome.history) {
+        chrome.history = {
+            search: function (query, cb) {
+                fetch('http://127.0.0.1:33123/hist-search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: query && query.text ? query.text : '' }) })
+                    .then(function (r) { return r.json(); })
+                    .then(function (items) { if (cb) { cb(items); } })
+                    .catch(function () { if (cb) { cb([]); } });
+            },
+            addUrl: function (details, cb) {
+                fetch('http://127.0.0.1:33123/hist-add', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(details || {}) })
+                    .then(function () { if (cb) { cb(); } })
+                    .catch(function () { if (cb) { cb(); } });
+            },
+            deleteUrl: function (details, cb) {
+                fetch('http://127.0.0.1:33123/hist-del', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(details || {}) })
+                    .then(function () { if (cb) { cb(); } })
+                    .catch(function () { if (cb) { cb(); } });
+            },
+            deleteAll: function (cb) {
+                fetch('http://127.0.0.1:33123/hist-delall', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+                    .then(function () { if (cb) { cb(); } })
+                    .catch(function () { if (cb) { cb(); } });
+            },
+            onVisited: { addListener: function () {}, removeListener: function () {} },
+            onVisitRemoved: { addListener: function () {}, removeListener: function () {} }
+        };
+    }
+    if (!chrome.browsingData) {
+        chrome.browsingData = {
+            remove: function (options, dataToRemove, cb) {
+                fetch('http://127.0.0.1:33123/browsingdata', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({
+                        cookies: dataToRemove && dataToRemove.cookies,
+                        cache: dataToRemove && dataToRemove.cache,
+                        localStorage: dataToRemove && dataToRemove.localStorage,
+                        history: dataToRemove && dataToRemove.history
+                    })
+                }).then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
+            },
+            removeCache: function (options, cb) {
+                fetch('http://127.0.0.1:33123/browsingdata', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cache: true }) })
+                    .then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
+            },
+            removeCookies: function (options, cb) {
+                fetch('http://127.0.0.1:33123/browsingdata', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cookies: true, localStorage: true }) })
+                    .then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
+            },
+            removeHistory: function (options, cb) {
+                fetch('http://127.0.0.1:33123/browsingdata', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ history: true }) })
+                    .then(function () { if (cb) { cb(); } }).catch(function () { if (cb) { cb(); } });
+            }
+        };
+    }
+    if (!chrome.topSites) {
+        chrome.topSites = {
+            get: function (cb) {
+                fetch('http://127.0.0.1:33123/topsites', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (sites) { if (cb) { cb(sites); } })
+                    .catch(function () { if (cb) { cb([]); } });
+            }
+        };
+    }
+    if (!chrome.search) {
+        chrome.search = {
+            query: function (options, cb) {
+                fetch('http://127.0.0.1:33123/search', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(options || {}) })
+                    .then(function () { if (cb) { cb(); } })
+                    .catch(function () { if (cb) { cb(); } });
+            }
+        };
+    }
+    if (!chrome.sessions) {
+        chrome.sessions = {
+            getRecentlyClosed: function (cb) { if (cb) { cb([]); } },
+            restore: function (sessionId, cb) { if (cb) { cb({}); } },
+            onChanged: { addListener: function () {}, removeListener: function () {} }
+        };
+    }
+    if (!chrome.contentSettings) {
+        const contentSettingApi = function () {
+            return {
+                get: function (details, cb) {
+                    fetch('http://127.0.0.1:33123/cs-get', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(details || {}) })
+                        .then(function (r) { return r.json(); })
+                        .then(function (result) { if (cb) { cb(result); } })
+                        .catch(function () { if (cb) { cb({ setting: 'allow' }); } });
+                },
+                set: function (details, cb) {
+                    fetch('http://127.0.0.1:33123/cs-set', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(details || {}) })
+                        .then(function () { if (cb) { cb(); } })
+                        .catch(function () { if (cb) { cb(); } });
+                },
+                clear: function (details, cb) { if (cb) { cb(); } }
+            };
+        };
+        chrome.contentSettings = {
+            cookies: contentSettingApi(),
+            javascript: contentSettingApi(),
+            images: contentSettingApi(),
+            notifications: contentSettingApi(),
+            geolocation: contentSettingApi(),
+            camera: contentSettingApi(),
+            microphone: contentSettingApi(),
+            popups: contentSettingApi(),
+            location: contentSettingApi()
+        };
+    }
+    if (!chrome.proxy) {
+        chrome.proxy = {
+            settings: {
+                get: function (details, cb) {
+                    fetch('http://127.0.0.1:33123/proxy-get', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+                        .then(function (r) { return r.json(); })
+                        .then(function (result) { if (cb) { cb(result); } })
+                        .catch(function () { if (cb) { cb({ value: { mode: 'system' } }); } });
+                },
+                set: function (details, cb) {
+                    fetch('http://127.0.0.1:33123/proxy-set', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(details || {}) })
+                        .then(function () { if (cb) { cb(); } })
+                        .catch(function () { if (cb) { cb(); } });
+                },
+                clear: function (details, cb) { if (cb) { cb(); } }
+            },
+            onProxyError: { addListener: function () {}, removeListener: function () {} }
+        };
+    }
+    if (!chrome.system) {
+        chrome.system = {
+            display: {
+                getInfo: function (cb) {
+                    fetch('http://127.0.0.1:33123/sysdisplay', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+                        .then(function (r) { return r.json(); })
+                        .then(function (displays) { if (cb) { cb(displays); } })
+                        .catch(function () { if (cb) { cb([]); } });
+                },
+                onDisplayChanged: { addListener: function () {}, removeListener: function () {} }
+            }
+        };
+    }
+    if (chrome.commands && chrome.commands.onCommand && !chrome.commands.__bunpinokRegistered) {
+        chrome.commands.__bunpinokRegistered = true;
+        try {
+            const manifest = chrome.runtime.getManifest();
+            const manifestCommands = manifest && manifest.commands ? manifest.commands : {};
+            fetch('http://127.0.0.1:33123/commands-register', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ extId: chrome.runtime.id, commands: manifestCommands })
+            }).catch(function () {});
+        } catch (err) { }
+        const commandListeners = [];
+        const origAdd = chrome.commands.onCommand.addListener.bind(chrome.commands.onCommand);
+        chrome.commands.onCommand.addListener = function (fn) {
+            commandListeners.push(fn);
+            try { origAdd(fn); } catch (err) { }
+        };
+        setInterval(function () {
+            fetch('http://127.0.0.1:33123/commands-pending').then(function (r) { return r.json(); }).then(function (commands) {
+                if (!commands || commands.length === 0) {
+                    return;
+                }
+                for (const command of commands) {
+                    for (const listener of commandListeners) {
+                        try { listener(command.name); } catch (err) { }
+                    }
+                }
+            }).catch(function () {});
+        }, 150);
+    }
     if (!chrome.runtime.getContexts) {        chrome.runtime.getContexts = function (filter) {
             const extId = chrome.runtime.id;
             return fetch('http://127.0.0.1:33123/offscreen-has', {
