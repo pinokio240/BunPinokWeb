@@ -786,7 +786,7 @@ export function prepareExtensionForElectron(extPath) {
         const worker = manifest.background.service_worker;
         delete manifest.background.service_worker;
         manifest.background.scripts = [worker];
-        manifest.background.persistent = false;
+        manifest.background.persistent = true;
         manifest.manifest_version = 2;
         changed = true;
 
@@ -798,6 +798,10 @@ export function prepareExtensionForElectron(extPath) {
     if (manifest.manifest_version === 2 && manifest.background && Array.isArray(manifest.background.scripts)) {
         if (manifest.background.type) {
             delete manifest.background.type;
+            changed = true;
+        }
+        if (manifest.background.persistent !== true) {
+            manifest.background.persistent = true;
             changed = true;
         }
         for (const scriptName of manifest.background.scripts) {
