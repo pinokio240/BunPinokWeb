@@ -540,20 +540,32 @@ export class TabManager {
             return;
         }
         const wc = tab.view.webContents;
-        if (!wc.isDevToolsOpened()) {
-            wc.openDevTools({ mode: 'detach' });
-        }
-        setTimeout(() => {
+        const safeX = Math.round(x);
+        const safeY = Math.round(y);
+        const doInspect = () => {
             try {
                 if (!wc.isDestroyed()) {
-                    wc.inspectElement(Math.round(x), Math.round(y));
+                    wc.inspectElement(safeX, safeY);
+                }
+                if (this.logger) {
+                    this.logger.info('devtools', 'Инспекция элемента (' + safeX + ',' + safeY + ') на ' + tab.url);
                 }
             } catch (err) {
                 if (this.logger) {
                     this.logger.error('devtools', 'Не удалось открыть инспектор элемента: ' + err.message);
                 }
             }
-        }, 400);
+        };
+        if (!wc.isDevToolsOpened()) {
+            const devtoolsWc = wc.devToolsWebContents;
+            if (devtoolsWc && !devtoolsWc.isDestroyed() && devtoolsWc.isLoading()) {
+                devtoolsWc.once('did-finish-load', doInspect);
+            }
+            wc.openDevTools({ mode: 'detach', activate: true });
+            setTimeout(doInspect, 1500);
+        } else {
+            doInspect();
+        }
     }
 
     navigateTab(tabId, url) {
