@@ -1437,6 +1437,17 @@ export class DnrBridge {
                     initiatorOrigin = '';
                 }
             }
+            if (!initiatorOrigin || initiatorOrigin === 'null') {
+                try {
+                    const reqHeaders = details.requestHeaders || {};
+                    const originHeader = reqHeaders['Origin'] || reqHeaders['origin'];
+                    if (originHeader && originHeader.startsWith('chrome-extension://')) {
+                        initiatorOrigin = originHeader;
+                    }
+                } catch (err) {
+                    initiatorOrigin = '';
+                }
+            }
             if (initiatorOrigin.startsWith('chrome-extension://')) {
                 const hasAcao = Object.keys(responseHeaders).some((k) => k.toLowerCase() === 'access-control-allow-origin');
                 if (!hasAcao) {
