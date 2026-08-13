@@ -31,7 +31,9 @@ const UNKNOWN_PERMISSIONS = [
     'favicon',
     'topSites',
     'history',
-    'processes'
+    'processes',
+    'privacy',
+    'webNavigation'
 ];
 
 const COMPAT_SHIM = `(function () {

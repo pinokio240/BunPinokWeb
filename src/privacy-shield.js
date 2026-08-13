@@ -144,9 +144,21 @@ export class PrivacyShield {
 
     _isTracker(url, level) {
         const lowered = url.toLowerCase();
+        let hostname = '';
+        try {
+            hostname = new URL(lowered).hostname;
+        } catch (err) {
+            hostname = '';
+        }
         const trackers = level === 'strict' ? STRICT_TRACKERS : BALANCED_TRACKERS;
         for (const tracker of trackers) {
-            if (lowered.includes(tracker)) {
+            if (tracker.includes('/')) {
+                if (lowered.includes(tracker)) {
+                    return true;
+                }
+                continue;
+            }
+            if (hostname === tracker || hostname.endsWith('.' + tracker)) {
                 return true;
             }
         }

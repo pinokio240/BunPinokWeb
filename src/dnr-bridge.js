@@ -1092,7 +1092,7 @@ export class DnrBridge {
                         allAnswered = false;
                     }
                 }
-                if (allAnswered || Date.now() - startedAt > 2500) {
+                if (allAnswered || Date.now() - startedAt > 800) {
                     resolve(answers);
                 } else {
                     setTimeout(check, 40);
