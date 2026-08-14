@@ -1539,6 +1539,11 @@ app.whenReady().then(async () => {
 
     function hookSingleExtensionContents(wc, url) {
         wc.__bunpinokHooked = true;
+        try {
+            wc.setBackgroundThrottling(false);
+        } catch (err) {
+            // не поддерживается — пропускаем
+        }
         wc.on('console-message', (event, level, message, line, sourceId) => {
             if (!logger) {
                 return;

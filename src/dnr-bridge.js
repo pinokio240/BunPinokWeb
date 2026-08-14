@@ -161,7 +161,7 @@ export class DnrBridge {
         this.beforeSendHeadersHandlers = [];
         this.beforeRequestHandlers.push((details) => {
             if (details.url.startsWith('https://cdn.ghostery.com/')) {
-                return { redirectURL: 'https://ghostery-cdn.b-cdn.net/' + details.url.slice('https://cdn.ghostery.com/'.length) };
+                return { redirectURL: 'http://127.0.0.1:33123/ghostery-cdn/' + details.url.slice('https://cdn.ghostery.com/'.length) };
             }
             return null;
         });
@@ -219,6 +219,64 @@ export class DnrBridge {
                     }
                     if (this.logger && req.url !== '/webrq-pending' && req.url !== '/commands-pending') {
                         this.logger.info('bridge', req.method + ' ' + req.url + (body ? ' ' + body.slice(0, 200) : ''));
+                    }
+                    if (req.method === 'GET' && req.url.indexOf('/ghostery-cdn/') === 0) {
+                        const targetPath = req.url.slice('/ghostery-cdn/'.length);
+                        const targetUrl = 'https://ghostery-cdn.b-cdn.net/' + targetPath;
+                        try {
+                            const request = net.request({ url: targetUrl, method: 'GET' });
+                            request.setHeader('Host', 'cdn.ghostery.com');
+                            request.on('response', (upstream) => {
+                                const headers = {};
+                                const contentType = upstream.headers['content-type'] || upstream.headers['Content-Type'];
+                                if (contentType) {
+                                    headers['Content-Type'] = contentType;
+                                }
+                                const contentLength = upstream.headers['content-length'] || upstream.headers['Content-Length'];
+                                if (contentLength) {
+                                    headers['Content-Length'] = contentLength;
+                                }
+                                res.writeHead(upstream.statusCode, headers);
+                                upstream.on('data', (chunk) => {
+                                    try {
+                                        res.write(chunk);
+                                    } catch (err) {
+                                        // сокет закрыт — игнорируем
+                                    }
+                                });
+                                upstream.on('end', () => {
+                                    try {
+                                        res.end();
+                                    } catch (err) {
+                                        // уже закрыт
+                                    }
+                                });
+                                upstream.on('error', () => {
+                                    try {
+                                        res.end();
+                                    } catch (err) {
+                                        // уже закрыт
+                                    }
+                                });
+                            });
+                            request.on('error', () => {
+                                try {
+                                    res.writeHead(502);
+                                    res.end();
+                                } catch (err) {
+                                    // уже закрыт
+                                }
+                            });
+                            request.end();
+                        } catch (err) {
+                            try {
+                                res.writeHead(502);
+                                res.end();
+                            } catch (err2) {
+                                // уже закрыт
+                            }
+                        }
+                        return;
                     }
                     if (req.method === 'POST' && req.url === '/rules') {
                         const payload = JSON.parse(body);

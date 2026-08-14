@@ -651,7 +651,7 @@ const COMPAT_SHIM = `(function () {
                     }).catch(function () {});
                 }
             }).catch(function () {});
-        }, 60);
+        }, 25);
     }
     if (!chrome.cast) {
         chrome.cast = {
@@ -1037,6 +1037,33 @@ function convertLoaderImports(scriptPath) {
     }
 }
 
+function patchGhosteryQuirks(extPath) {
+    try {
+        const obsPath = path.join(extPath, 'utils', 'options-observer.js');
+        if (fs.existsSync(obsPath)) {
+            let content = fs.readFileSync(obsPath, 'utf-8');
+            if (content.includes('The observer must be initialized synchronously') && !content.includes('__bunpinokObsPatched')) {
+                content = content.replace('if (setup === "done") throw new Error("The observer must be initialized synchronously");', 'if (setup === "done") { setup = null; } // __bunpinokObsPatched');
+                fs.writeFileSync(obsPath, content, 'utf-8');
+            }
+        }
+    } catch (err) {
+        console.error('Не удалось пропатчить options-observer:', err);
+    }
+    try {
+        const onbPath = path.join(extPath, 'background', 'onboarding.js');
+        if (fs.existsSync(onbPath)) {
+            let content = fs.readFileSync(onbPath, 'utf-8');
+            if (content.includes('pages/onboarding/index.html') && !content.includes('__bunpinokOnboardingPatched')) {
+                content = content.replace('if (onboarding) return;', 'if (onboarding) return; try { const _cur = await chrome.storage.local.get("options"); const _opts = _cur.options || {}; _opts.onboarding = true; await chrome.storage.local.set({ options: _opts }); } catch (e) {} // __bunpinokOnboardingPatched');
+                fs.writeFileSync(onbPath, content, 'utf-8');
+            }
+        }
+    } catch (err) {
+        console.error('Не удалось пропатчить onboarding:', err);
+    }
+}
+
 export function prepareExtensionForElectron(extPath, mode) {
     const manifestPath = path.join(extPath, 'manifest.json');
     if (!fs.existsSync(manifestPath)) {
@@ -1076,6 +1103,8 @@ export function prepareExtensionForElectron(extPath, mode) {
     if (existingShim !== shimContentToWrite) {
         fs.writeFileSync(shimPath, shimContentToWrite, 'utf-8');
     }
+
+    patchGhosteryQuirks(extPath);
 
     if (manifest.manifest_version === 3 && mode !== 'mv2') {
         // ── НАТИВНЫЙ MV3 (без даунгрейда) ──
