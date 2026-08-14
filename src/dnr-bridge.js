@@ -167,8 +167,35 @@ export class DnrBridge {
         });
         this.context = null;
         this.wrQueryStats = { created: 0, answered: 0, timedOut: 0 };
+        this.storageCache = {};
+        this.storageDirty = {};
+        this.storageTimers = {};
         this._startServer();
         this._setupWebRequest();
+    }
+
+    flushStorage() {
+        for (const key of Object.keys(this.storageTimers)) {
+            if (this.storageTimers[key]) {
+                clearTimeout(this.storageTimers[key]);
+                this.storageTimers[key] = null;
+            }
+        }
+        for (const key of Object.keys(this.storageDirty)) {
+            const payload = this.storageDirty[key];
+            delete this.storageDirty[key];
+            const dotIdx = key.lastIndexOf('.');
+            if (dotIdx <= 0) {
+                continue;
+            }
+            const extId = key.slice(0, dotIdx);
+            const area = key.slice(dotIdx + 1);
+            try {
+                fs.writeFileSync(this._storageFilePath(extId, area), JSON.stringify(payload), 'utf-8');
+            } catch (err) {
+                // не критично при выходе
+            }
+        }
     }
 
     addOnBeforeRequestHandler(fn) {
@@ -1088,12 +1115,17 @@ export class DnrBridge {
     }
 
     _storageLoad(extId, area) {
+        const cacheKey = extId + '.' + area;
+        if (this.storageCache && Object.prototype.hasOwnProperty.call(this.storageCache, cacheKey)) {
+            return this.storageCache[cacheKey];
+        }
+        let data = {};
         try {
             const filePath = this._storageFilePath(extId, area);
             if (fs.existsSync(filePath)) {
                 const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
                 if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                    return parsed;
+                    data = parsed;
                 }
             }
         } catch (err) {
@@ -1101,17 +1133,42 @@ export class DnrBridge {
                 this.logger.error('storage', 'Не удалось прочитать хранилище ' + extId + '.' + area + ': ' + err.message);
             }
         }
-        return {};
+        if (!this.storageCache) {
+            this.storageCache = {};
+            this.storageDirty = {};
+            this.storageTimers = {};
+        }
+        this.storageCache[cacheKey] = data;
+        return data;
     }
 
     _storageSave(extId, area, data) {
-        try {
-            fs.writeFileSync(this._storageFilePath(extId, area), JSON.stringify(data), 'utf-8');
-        } catch (err) {
-            if (this.logger) {
-                this.logger.error('storage', 'Не удалось сохранить хранилище ' + extId + '.' + area + ': ' + err.message);
-            }
+        const cacheKey = extId + '.' + area;
+        if (!this.storageCache) {
+            this.storageCache = {};
+            this.storageDirty = {};
+            this.storageTimers = {};
         }
+        this.storageCache[cacheKey] = data;
+        this.storageDirty[cacheKey] = data;
+        if (this.storageTimers[cacheKey]) {
+            return;
+        }
+        this.storageTimers[cacheKey] = setTimeout(() => {
+            this.storageTimers[cacheKey] = null;
+            const dirty = this.storageDirty[cacheKey];
+            if (dirty === undefined) {
+                return;
+            }
+            delete this.storageDirty[cacheKey];
+            const payload = dirty;
+            const filePath = this._storageFilePath(extId, area);
+            fs.writeFile(filePath, JSON.stringify(payload), 'utf-8', (err) => {
+                if (err && this.logger) {
+                    this.logger.error('storage', 'Не удалось сохранить хранилище ' + extId + '.' + area + ': ' + err.message);
+                }
+            });
+        }, 400);
     }
 
     _fsOriginAllowed(origin) {

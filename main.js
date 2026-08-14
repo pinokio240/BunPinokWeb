@@ -1703,6 +1703,9 @@ app.on('before-quit', () => {
     if (tabManager && tabManager.getTabCount() > 0 && sessionStore) {
         sessionStore.save(tabManager.getAllTabs());
     }
+    if (dnrBridge && dnrBridge.flushStorage) {
+        dnrBridge.flushStorage();
+    }
     pipManager.closeAll();
     if (tabManager) tabManager.destroy();
 });
