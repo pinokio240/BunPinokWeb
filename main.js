@@ -1249,6 +1249,9 @@ function restoreStartupTabs() {
                 if (!url || url === '') {
                     url = 'browser://newtab';
                 }
+                if (url.startsWith('chrome-extension://')) {
+                    continue;
+                }
                 tabManager.createTab(url);
             }
             return;
