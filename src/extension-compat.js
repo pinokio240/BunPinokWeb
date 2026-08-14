@@ -198,12 +198,34 @@ const COMPAT_SHIM = `(function () {
         const storageExtId = chrome.runtime.id;
         const storageBridge = 'http://127.0.0.1:33123';
         const storageListeners = [];
+        const storageSafeStringify = function (value) {
+            const seen = new WeakSet();
+            return JSON.stringify(value, function (key, val) {
+                if (typeof val === 'object' && val !== null) {
+                    if (seen.has(val)) {
+                        return undefined;
+                    }
+                    seen.add(val);
+                }
+                return val;
+            });
+        };
         const storageCall = function (area, action, payload) {
+            let body = '';
+            try {
+                body = storageSafeStringify({ extId: storageExtId, area: area, payload: payload || {} });
+            } catch (err) {
+                try { console.error('[bunpinok-shim] storage ' + action + ' stringify failed:', err); } catch (err2) { }
+                return Promise.resolve({ data: {} });
+            }
             return fetch(storageBridge + '/storage-' + action, {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ extId: storageExtId, area: area, payload: payload || {} })
-            }).then(function (r) { return r.json(); }).catch(function () { return { data: {} }; });
+                body: body
+            }).then(function (r) { return r.json(); }).catch(function (err) {
+                try { console.error('[bunpinok-shim] storage ' + action + ' fetch failed:', err); } catch (err2) { }
+                return { data: {} };
+            });
         };
         const storageNotify = function (changes, area) {
             if (storageListeners.length === 0) {
