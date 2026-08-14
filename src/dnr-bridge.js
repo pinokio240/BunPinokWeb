@@ -166,6 +166,7 @@ export class DnrBridge {
             return null;
         });
         this.context = null;
+        this.wrQueryStats = { created: 0, answered: 0, timedOut: 0 };
         this._startServer();
         this._setupWebRequest();
     }
@@ -262,9 +263,16 @@ export class DnrBridge {
                     }
                     if (req.method === 'GET' && req.url === '/webrq-pending') {
                         const extId = origin.startsWith('chrome-extension://') ? origin.slice('chrome-extension://'.length).split('/')[0] : '';
+                        const now = Date.now();
                         const mine = [];
                         const rest = [];
                         for (const query of this.pendingQueries) {
+                            if (!query.createdAt) {
+                                query.createdAt = now;
+                            }
+                            if (now - query.createdAt > 10000) {
+                                continue;
+                            }
                             if (extId && query.extId === extId) {
                                 mine.push(query);
                             } else {
@@ -278,6 +286,10 @@ export class DnrBridge {
                     if (req.method === 'POST' && req.url === '/webrq-answer') {
                         const payload = JSON.parse(body);
                         this.wrAnswers.set(payload.queryId, payload.response);
+                        this.wrQueryStats.answered = this.wrQueryStats.answered + 1;
+                        if (this.logger && this.wrQueryStats.answered % 100 === 1) {
+                            this.logger.info('webRequest', 'Статистика: создано запросов=' + this.wrQueryStats.created + ', отвечено=' + this.wrQueryStats.answered + ', таймаутов=' + this.wrQueryStats.timedOut + ', очередь=' + this.pendingQueries.length);
+                        }
                         this._json(res, { success: true });
                         return;
                     }
@@ -1268,6 +1280,9 @@ export class DnrBridge {
     }
 
     _queryWebRequestListeners(event, details) {
+        if (details.url && details.url.indexOf('127.0.0.1:33123') !== -1) {
+            return Promise.resolve(null);
+        }
         const matches = this.wrListeners.filter((listener) => {
             return listener.event === event && this._matchesWrListener(listener, details);
         });
@@ -1285,11 +1300,11 @@ export class DnrBridge {
             frameId = 0;
             parentFrameId = -1;
         }
-        const pending = [];
+        const blockingQueries = [];
+        const nonBlockingQueries = [];
         for (const listener of matches) {
-            const queryId = 'q-' + (++this.wrSeq);
-            pending.push({
-                queryId: queryId,
+            const query = {
+                queryId: 'q-' + (++this.wrSeq),
                 listenerId: listener.listenerId,
                 extId: listener.extId || '',
                 details: {
@@ -1304,26 +1319,41 @@ export class DnrBridge {
                     requestHeaders: toChromeHeaders(details.requestHeaders),
                     responseHeaders: toChromeHeaders(details.responseHeaders)
                 }
-            });
+            };
+            if (listener.blocking) {
+                blockingQueries.push(query);
+            } else {
+                nonBlockingQueries.push(query);
+            }
         }
-        this.pendingQueries.push(...pending);
+        this.pendingQueries.push(...blockingQueries, ...nonBlockingQueries);
+        this.wrQueryStats.created = this.wrQueryStats.created + blockingQueries.length + nonBlockingQueries.length;
         return new Promise((resolve) => {
             const answers = {};
             const startedAt = Date.now();
             const check = () => {
-                let allAnswered = true;
-                for (const query of pending) {
+                let allBlockingAnswered = true;
+                for (const query of blockingQueries) {
                     const answer = this.wrAnswers.get(query.queryId);
                     if (answer !== undefined) {
                         answers[query.queryId] = answer;
                     } else {
-                        allAnswered = false;
+                        allBlockingAnswered = false;
                     }
                 }
-                if (allAnswered || Date.now() - startedAt > 800) {
+                if (allBlockingAnswered || Date.now() - startedAt > 350) {
+                    if (!allBlockingAnswered) {
+                        this.wrQueryStats.timedOut = this.wrQueryStats.timedOut + 1;
+                    }
+                    for (const query of nonBlockingQueries) {
+                        const answer = this.wrAnswers.get(query.queryId);
+                        if (answer !== undefined) {
+                            answers[query.queryId] = answer;
+                        }
+                    }
                     resolve(answers);
                 } else {
-                    setTimeout(check, 40);
+                    setTimeout(check, 25);
                 }
             };
             check();
@@ -1457,7 +1487,8 @@ export class DnrBridge {
                 callback({ requestHeaders: headers });
                 return;
             }
-            this._queryWebRequestListeners('onBeforeSendHeaders', details).then((answers) => {
+            const wrDetails = Object.assign({}, details, { requestHeaders: headers });
+            this._queryWebRequestListeners('onBeforeSendHeaders', wrDetails).then((answers) => {
                 if (answers) {
                     for (const key of Object.keys(answers)) {
                         const response = answers[key];

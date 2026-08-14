@@ -940,7 +940,7 @@ const COMPAT_SHIM = `(function () {
                         details.code = '(' + options.func.toString() + ')(' + JSON.stringify(options.args || []) + ')';
                     }
                     if (options.target && options.target.tabId) {
-                        chrome.tabs.executeScript(options.target.tabId, details, cb);
+                        chrome.tabs.executeScript(options.target.tabId, details, typeof cb === 'function' ? cb : function () {});
                     }
                     return;
                 }
@@ -949,13 +949,33 @@ const COMPAT_SHIM = `(function () {
             insertCSS: function (options, cb) {
                 if (chrome.tabs && chrome.tabs.insertCSS) {
                     if (options.target && options.target.tabId) {
-                        chrome.tabs.insertCSS(options.target.tabId, { file: options.files ? options.files[0] : undefined, code: options.css }, cb);
+                        chrome.tabs.insertCSS(options.target.tabId, { file: options.files ? options.files[0] : undefined, code: options.css }, typeof cb === 'function' ? cb : function () {});
                     }
                     return;
                 }
                 if (cb) { cb(); }
             }
         };
+    } else {
+        if (!chrome.scripting.getRegisteredContentScripts) {
+            chrome.scripting.getRegisteredContentScripts = function (filter, cb) {
+                if (typeof filter === 'function') { cb = filter; }
+                if (cb) { cb([]); }
+                return Promise.resolve([]);
+            };
+        }
+        if (!chrome.scripting.registerContentScripts) {
+            chrome.scripting.registerContentScripts = function (scripts, cb) {
+                if (cb) { cb(); }
+                return Promise.resolve();
+            };
+        }
+        if (!chrome.scripting.unregisterContentScripts) {
+            chrome.scripting.unregisterContentScripts = function (ids, cb) {
+                if (cb) { cb(); }
+                return Promise.resolve();
+            };
+        }
     }
     } catch (err) {
         try { console.error('[bunpinok-shim] ' + (err && err.message ? err.message : String(err))); } catch (err2) { }
