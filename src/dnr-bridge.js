@@ -32,6 +32,36 @@ function matchPatternToRegex(pattern) {
     return new RegExp('^' + schemeRe + '://' + hostRe + pathRe);
 }
 
+const RESOURCE_TYPE_MAP = {
+    mainFrame: 'main_frame',
+    subFrame: 'sub_frame',
+    stylesheet: 'stylesheet',
+    script: 'script',
+    image: 'image',
+    font: 'font',
+    object: 'object',
+    xhr: 'xmlhttprequest',
+    ping: 'ping',
+    cspReport: 'csp_report',
+    media: 'media',
+    webSocket: 'websocket',
+    other: 'other'
+};
+
+function toChromeHeaders(headers) {
+    if (!headers) {
+        return [];
+    }
+    if (Array.isArray(headers)) {
+        return headers;
+    }
+    const out = [];
+    for (const key of Object.keys(headers)) {
+        out.push({ name: key, value: headers[key] });
+    }
+    return out;
+}
+
 function getInitiatorDomain(details) {
     let origin = '';
     if (details.referrer && details.referrer !== 'null') {
@@ -1215,8 +1245,11 @@ export class DnrBridge {
                 return false;
             }
         }
-        if (listener.types.length > 0 && !listener.types.includes(details.resourceType)) {
-            return false;
+        if (listener.types.length > 0) {
+            const chromeType = RESOURCE_TYPE_MAP[details.resourceType] || details.resourceType || 'other';
+            if (!listener.types.includes(chromeType)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1228,6 +1261,17 @@ export class DnrBridge {
         if (matches.length === 0) {
             return Promise.resolve(null);
         }
+        let frameId = 0;
+        let parentFrameId = -1;
+        try {
+            if (details.resourceType !== 'mainFrame' && details.frame) {
+                frameId = details.frame.routingId;
+                parentFrameId = details.frame.parent ? details.frame.parent.routingId : -1;
+            }
+        } catch (err) {
+            frameId = 0;
+            parentFrameId = -1;
+        }
         const pending = [];
         for (const listener of matches) {
             const queryId = 'q-' + (++this.wrSeq);
@@ -1237,11 +1281,14 @@ export class DnrBridge {
                 details: {
                     url: details.url,
                     method: details.method,
-                    type: details.resourceType,
-                    tabId: -1,
-                    frameId: 0,
-                    requestHeaders: details.requestHeaders || {},
-                    responseHeaders: details.responseHeaders || {}
+                    type: RESOURCE_TYPE_MAP[details.resourceType] || details.resourceType || 'other',
+                    tabId: typeof details.webContentsId === 'number' ? details.webContentsId : -1,
+                    frameId: frameId,
+                    parentFrameId: parentFrameId,
+                    requestId: String(details.id || ''),
+                    initiator: details.referrer || undefined,
+                    requestHeaders: toChromeHeaders(details.requestHeaders),
+                    responseHeaders: toChromeHeaders(details.responseHeaders)
                 }
             });
         }
@@ -1401,12 +1448,26 @@ export class DnrBridge {
                     for (const key of Object.keys(answers)) {
                         const response = answers[key];
                         if (response && response.requestHeaders) {
-                            for (const headerKey of Object.keys(response.requestHeaders)) {
-                                const value = response.requestHeaders[headerKey];
-                                if (value === null || value === undefined) {
-                                    delete headers[headerKey];
-                                } else {
-                                    headers[headerKey] = value;
+                            const rh = response.requestHeaders;
+                            if (Array.isArray(rh)) {
+                                for (const header of rh) {
+                                    if (!header || typeof header.name !== 'string') {
+                                        continue;
+                                    }
+                                    if (header.value === null || header.value === undefined) {
+                                        delete headers[header.name];
+                                    } else {
+                                        headers[header.name] = String(header.value);
+                                    }
+                                }
+                            } else {
+                                for (const headerKey of Object.keys(rh)) {
+                                    const value = rh[headerKey];
+                                    if (value === null || value === undefined) {
+                                        delete headers[headerKey];
+                                    } else {
+                                        headers[headerKey] = value;
+                                    }
                                 }
                             }
                         }
@@ -1515,7 +1576,49 @@ export class DnrBridge {
                     }
                 }
             }
-            callback({ responseHeaders: responseHeaders });
+            if (this.wrListeners.length === 0) {
+                callback({ responseHeaders: responseHeaders });
+                return;
+            }
+            this._queryWebRequestListeners('onHeadersReceived', details).then((answers) => {
+                if (answers) {
+                    for (const key of Object.keys(answers)) {
+                        const response = answers[key];
+                        if (!response || typeof response !== 'object') {
+                            continue;
+                        }
+                        if (response.cancel === true) {
+                            callback({ cancel: true });
+                            return;
+                        }
+                        if (response.responseHeaders) {
+                            const rh = response.responseHeaders;
+                            if (Array.isArray(rh)) {
+                                for (const header of rh) {
+                                    if (!header || typeof header.name !== 'string') {
+                                        continue;
+                                    }
+                                    if (header.value === null || header.value === undefined) {
+                                        delete responseHeaders[header.name];
+                                    } else {
+                                        responseHeaders[header.name] = [String(header.value)];
+                                    }
+                                }
+                            } else {
+                                for (const headerKey of Object.keys(rh)) {
+                                    const value = rh[headerKey];
+                                    if (value === null || value === undefined) {
+                                        delete responseHeaders[headerKey];
+                                    } else {
+                                        responseHeaders[headerKey] = Array.isArray(value) ? value : [String(value)];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                callback({ responseHeaders: responseHeaders });
+            });
         });
     }
 
