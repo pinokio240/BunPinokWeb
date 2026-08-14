@@ -26,9 +26,10 @@ function matchPatternToRegex(pattern) {
     const slashIdx = rest.indexOf('/');
     const host = slashIdx >= 0 ? rest.slice(0, slashIdx) : rest;
     const pathPart = slashIdx >= 0 ? rest.slice(slashIdx) : '/*';
-    const schemeRe = scheme === '*' ? '(https?|wss?)' : scheme.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const hostRe = host === '*' ? '[^/]+' : host.replace(/\*/g, '[^/]*').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pathRe = pathPart.replace(/\*/g, '.*').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapeRegex = (s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+    const schemeRe = scheme === '*' ? '(https?|wss?)' : escapeRegex(scheme);
+    const hostRe = host === '*' ? '[^/]+' : escapeRegex(host).replace(/\\\*/g, '[^/]*');
+    const pathRe = escapeRegex(pathPart).replace(/\\\*/g, '.*');
     return new RegExp('^' + schemeRe + '://' + hostRe + pathRe);
 }
 
@@ -255,13 +256,23 @@ export class DnrBridge {
                     }
                     if (req.method === 'POST' && req.url === '/webrq-register') {
                         const payload = JSON.parse(body);
-                        this._registerWebRequestListener(payload);
+                        this._registerWebRequestListener(payload, origin);
                         this._json(res, { success: true });
                         return;
                     }
                     if (req.method === 'GET' && req.url === '/webrq-pending') {
-                        const delivered = this.pendingQueries.splice(0, this.pendingQueries.length);
-                        this._json(res, delivered);
+                        const extId = origin.startsWith('chrome-extension://') ? origin.slice('chrome-extension://'.length).split('/')[0] : '';
+                        const mine = [];
+                        const rest = [];
+                        for (const query of this.pendingQueries) {
+                            if (extId && query.extId === extId) {
+                                mine.push(query);
+                            } else {
+                                rest.push(query);
+                            }
+                        }
+                        this.pendingQueries = rest;
+                        this._json(res, mine);
                         return;
                     }
                     if (req.method === 'POST' && req.url === '/webrq-answer') {
@@ -1214,20 +1225,22 @@ export class DnrBridge {
         }
     }
 
-    _registerWebRequestListener(payload) {
+    _registerWebRequestListener(payload, origin) {
+        const extId = (typeof origin === 'string' && origin.startsWith('chrome-extension://')) ? origin.slice('chrome-extension://'.length).split('/')[0] : '';
         const listener = {
             listenerId: payload.listenerId,
             event: payload.event,
             urls: Array.isArray(payload.urls) ? payload.urls : [],
             types: Array.isArray(payload.types) ? payload.types : [],
-            blocking: payload.blocking === true
+            blocking: payload.blocking === true,
+            extId: extId
         };
         this.wrListeners = this.wrListeners.filter((existing) => {
-            return existing.listenerId !== listener.listenerId;
+            return !(existing.listenerId === listener.listenerId && existing.extId === listener.extId);
         });
         this.wrListeners.push(listener);
         if (this.logger) {
-            this.logger.info('webRequest', 'Зарегистрирован слушатель ' + listener.event + ' (id=' + listener.listenerId + ', blocking=' + listener.blocking + ')');
+            this.logger.info('webRequest', 'Зарегистрирован слушатель ' + listener.event + ' (id=' + listener.listenerId + ', ext=' + (extId || '?') + ', blocking=' + listener.blocking + ')');
         }
     }
 
@@ -1278,6 +1291,7 @@ export class DnrBridge {
             pending.push({
                 queryId: queryId,
                 listenerId: listener.listenerId,
+                extId: listener.extId || '',
                 details: {
                     url: details.url,
                     method: details.method,
